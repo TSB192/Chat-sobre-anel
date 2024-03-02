@@ -35,17 +35,24 @@ int main(void)
         nread = recvfrom(fd, buffer, sizeof(buffer), 0, &addr, &addrlen);
         if (nread == -1) /*error*/
             exit(1);
-        //n = sendto(fd, buffer, nread, 0, &addr, addrlen);
-        //if (n == -1) /*error*/
-        //    exit(1);
-        
+        // n = sendto(fd, buffer, nread, 0, &addr, addrlen);
+        // if (n == -1) /*error*/
+        // exit(1);
+
         buffer[nread] = '\0';
 
         // Check if the received message is "NODES"
-        if (strcmp(buffer, "NODES") == 0)
+        if (strcmp(buffer, "NODES %d") == 0)
         {
+            // Extract the ring ID from the message
+            char ringID[4];
+            memcpy(ringID, buffer + 6, 3); // Copy 3 characters starting from position 6
+            ringID[3] = '\0'; // Null-terminate the string
+            
+            printf("Received message with ring ID: %s\n", ringID);
+            
             // Replace this with code to generate the node list
-            char nodeList[MAX_NODES][128] = {"NODE LIST", "Node 1", "Node 2", "Node 3"};
+            char nodeList[MAX_NODES][128] = {"NODELIST", "Node 1", "Node 2", "Node 3"};
             int numNodes = 3; // Number of nodes in the list
 
             // Concatenate the node list into a single string

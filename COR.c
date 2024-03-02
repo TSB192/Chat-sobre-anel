@@ -22,11 +22,14 @@ char *UDP_client(char *msg)
     if (errcode != 0)
         exit(1);
 
-    n = sendto(fd, msg, sizeof msg, 0, res->ai_addr, res->ai_addrlen);
+    n = sendto(fd, msg, strlen(msg), 0, res->ai_addr, res->ai_addrlen);
     if (n == -1)
         exit(1);
 
     addrlen = sizeof(addr);
+
+    fprintf(stderr, "%s", buffer);
+
     n = recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr *)&addr, &addrlen);
     if (n == -1)
         exit(1);
@@ -45,10 +48,16 @@ char *UDP_client(char *msg)
     return buffer;
 }
 
-int join(char *ring, char *id, char *ip, char *tcp, char *succ, char *succsucc, char *pred)
+int join(char *ring, char *id, char *ip, char *tcp)
 {
-    // Formulate the message
-    snprintf(nodes, sizeof(nodes), "NODES");
+    // Formulate the message "NODES"
+    // snprintf(nodes, sizeof(nodes), "NODES");
+
+    // Formulate the message with "NODES r" format
+
+    snprintf(nodes, sizeof(nodes), "NODES %s", ring);
+
+    fprintf(stderr, "%s", nodes);
 
     // Call UDP_client to send the message and receive response
     char *response = UDP_client(nodes);
