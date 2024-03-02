@@ -105,6 +105,5 @@ int main(int argc, char *argv[]) // Recebe os argumentos do terminal, argc - con
         else
             join(ring, id, ip, tcp);
     }
-    printf("adoro o sopas");
     return 0;
 }
