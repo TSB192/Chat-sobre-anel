@@ -13,7 +13,7 @@ char *TCP_Client(char *server_ip, char *server_port, char *msg)
     struct addrinfo hints, *res;
     int fd, n;
     ssize_t nbytes, nleft, nwritten, nread;
-    char *ptr, buffer [128 + 1];
+    char *ptr, buffer[128 + 1];
 
     fd = socket(AF_INET, SOCK_STREAM, 0); // TCP socket
     if (fd == -1)
@@ -28,7 +28,7 @@ char *TCP_Client(char *server_ip, char *server_port, char *msg)
         exit(1);
 
     n = connect(fd, res->ai_addr, res->ai_addrlen);
-    //perror("");
+    // perror("");
     if (n == -1) /*error*/
         exit(1);
 
@@ -100,6 +100,35 @@ char *UDP_client(char *msg)
     return buffer;
 }
 
+// Function to check if the given ID exists in the node list
+int id_exists(char *node_list, char *id)
+{
+    fprintf(stderr, "NODE LIST: %s\n", node_list);
+
+    char *token = strtok(node_list, " \n"); // Tokenize based on both space and newline
+
+    fprintf(stderr, "TOKEN IN USE BEFORE WHILE: %s\n", token);
+
+    while (token != NULL)
+    {
+        fprintf(stderr, "TOKEN IN USE: %s\n", token);
+
+        if (strcmp(token, id) == 0)
+        {
+            return 1; // ID exists
+        }
+
+        // If the lengths are different, the IDs are definitely different
+        if (strlen(token) == strlen(id) && strncmp(token, id, strlen(id)) == 0)
+        {
+            return 1; // ID exists
+        }
+
+        token = strtok(NULL, " \n"); // Tokenize based on both space and newline
+    }
+    return 0; // ID doesn't exist
+}
+
 int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, char *succTCP)
 {
     // Formulate the message with "NODES r" format
@@ -111,29 +140,52 @@ int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, 
     // Process the node_list
     printf("Received response:\n%s\n", node_list);
 
-    // Extract the succesor id, ip and tcp
+    //// Extract the succesor id, ip and tcp
     if (node_list)
     {
         if (sscanf(node_list, "NODELIST %s %s %s %s", ring, succID, succIP, succTCP) == 4)
         {
             printf("SUCCESSOR ID: %s\nSUCCESSOR IP: %s\nSUCCESSOR TCP PORT: %s\n", succID, succIP, succTCP);
 
+            // Check if the joining ID already exists in the ring
+            if (id_exists(node_list, id))
+            {
+                fprintf(stderr, "ID %s already exists in the ring. Generating a new ID...\n", id);
+
+                // Generate a new ID
+                srand(time(NULL));
+                int new_id = (rand() % 99) + 1; // Generate a random number between 1 and 99
+
+                snprintf(id, 3, "%02d", new_id); // Ensure id has enough space
+
+                fprintf(stderr, "GENERATED ID: %s\n", id);
+
+                // Now, we need to recheck if the new ID exists in the node list
+                // If it does, repeat the process until we find a unique ID
+                while (id_exists(node_list, id))
+                {
+                    fprintf(stderr, "New ID %s already exists in the ring. Generating another new ID...\n", id);
+
+                    new_id = (rand() % 99) + 1;
+                    snprintf(id, 3, "%02d", new_id);
+                }
+
+                fprintf(stderr, "Final ID: %s\n", id);
+            }
+
+            fprintf(stderr, "Your new ID is: %s\n", id);
+
             // Establish a TCP connection to the successor node
             char tcp_message[128];
-
             snprintf(tcp_message, sizeof(tcp_message), "ENTRY %s %s %s", id, ip, tcp);
-
             TCP_Client(succIP, succTCP, tcp_message);
         }
+
         else
         {
             printf("Failed to extract ID, IP, and TCP from the node list.\n");
         }
     }
-
-
-
-
 
     return 0;
 }
@@ -190,7 +242,7 @@ int main(int argc, char *argv[]) // Recebe os argumentos do terminal, argc - con
         else
         {
             // Hardcode do ip e tcp do no a registar
-            char *id = "127.0.0.1";
+            char *ip = "127.0.0.1";
             char *tcp = "58001";
 
             join(ring, id, ip, tcp, succID, succIP, succTCP);

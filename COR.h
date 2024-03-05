@@ -11,6 +11,7 @@
 #include <netdb.h>
 #include <string.h>
 #include <stdlib.h>
+#include <time.h>
 #define PORT "58001"
 #define MAX_NODES 10 // Maximum number of nodes in the list
 
