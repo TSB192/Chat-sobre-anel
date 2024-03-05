@@ -1,11 +1,12 @@
 #include "COR.h"
 
-int fd, errcode;
+int fd, errcode, udp_fd;
 ssize_t n;
 socklen_t addrlen;
 struct addrinfo hints, *res;
 struct sockaddr_in addr;
-char buffer[128];
+char buffer[1028];
+char udp_buffer[1028];
 char nodes[10];
 
 char *TCP_Client(char *server_ip, char *server_port, char *msg)
@@ -23,8 +24,8 @@ char *TCP_Client(char *server_ip, char *server_port, char *msg)
     hints.ai_family = AF_INET;       // IPv4
     hints.ai_socktype = SOCK_STREAM; // TCP socket
 
-    n = getaddrinfo("127.0.0.1", "58001", &hints, &res);
-    if (n != 0) /*error*/
+    n = getaddrinfo("127.0.0.1", "58001", &hints, &res); // IP e TCP do successor
+    if (n != 0)                                          /*error*/
         exit(1);
 
     n = connect(fd, res->ai_addr, res->ai_addrlen);
@@ -73,7 +74,7 @@ char *UDP_client(char *msg)
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
 
-    errcode = getaddrinfo("127.0.0.1", PORT, &hints, &res);
+    errcode = getaddrinfo("193.136.138.142", PORT, &hints, &res);
     if (errcode != 0)
         exit(1);
 
@@ -83,14 +84,14 @@ char *UDP_client(char *msg)
 
     addrlen = sizeof(addr);
 
-    n = recvfrom(fd, buffer, 512, 0, (struct sockaddr *)&addr, &addrlen);
+    n = recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr *)&addr, &addrlen);
     if (n == -1)
         exit(1);
 
     buffer[n] = '\0';
 
     write(1, "echo: ", 6);
-    write(1, msg, strlen(nodes));
+    write(1, buffer, n);
     write(1, "\n", 1);
 
     freeaddrinfo(res);
@@ -103,15 +104,10 @@ char *UDP_client(char *msg)
 // Function to check if the given ID exists in the node list
 int id_exists(char *node_list, char *id)
 {
-    fprintf(stderr, "NODE LIST: %s\n", node_list);
-
     char *token = strtok(node_list, " \n"); // Tokenize based on both space and newline
-
-    fprintf(stderr, "TOKEN IN USE BEFORE WHILE: %s\n", token);
 
     while (token != NULL)
     {
-        fprintf(stderr, "TOKEN IN USE: %s\n", token);
 
         if (strcmp(token, id) == 0)
         {
@@ -131,18 +127,30 @@ int id_exists(char *node_list, char *id)
 
 int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, char *succTCP)
 {
+
     // Formulate the message with "NODES r" format
     snprintf(nodes, sizeof(nodes), "NODES %s", ring);
 
     // Call UDP_client to send the message and receive node_list
     char *node_list = UDP_client(nodes);
 
+    // fprintf(stderr, "LISTA: %s\n", node_list);
+
     // Process the node_list
     printf("Received response:\n%s\n", node_list);
 
-    //// Extract the succesor id, ip and tcp
-    if (node_list)
+    // Extract the succesor id, ip and tcp
+    // if (node_list)
+    //{
+    if (sscanf(node_list, "NODELIST %s %s %s %s", ring, succID, succIP, succTCP) == 1)
     {
+        char tcp_message[128];
+        snprintf(tcp_message, sizeof(tcp_message), "ENTRY %s %s %s", id, ip, tcp);
+
+        fprintf(stderr, "%s", tcp_message);
+
+        TCP_Client(id, tcp, tcp_message);
+
         if (sscanf(node_list, "NODELIST %s %s %s %s", ring, succID, succIP, succTCP) == 4)
         {
             printf("SUCCESSOR ID: %s\nSUCCESSOR IP: %s\nSUCCESSOR TCP PORT: %s\n", succID, succIP, succTCP);
@@ -183,7 +191,7 @@ int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, 
 
         else
         {
-            printf("Failed to extract ID, IP, and TCP from the node list.\n");
+            // printf("Failed to extract ID, IP, and TCP from the node list.\n");
         }
     }
 
@@ -243,13 +251,13 @@ int main(int argc, char *argv[]) // Recebe os argumentos do terminal, argc - con
         {
             // Hardcode do ip e tcp do no a registar
             char *ip = "127.0.0.1";
-            char *tcp = "58001";
+            char *tcp = "61000";
 
             join(ring, id, ip, tcp, succID, succIP, succTCP);
         }
     }
-
     free(regIP);
     free(regUDP);
+
     return 0;
 }
