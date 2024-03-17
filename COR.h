@@ -19,7 +19,7 @@
 #define MAX_NODES 10 // Maximum number of nodes in the list
 
 // variáveis globais
-extern char my_id[3], my_ip[16], my_port[6], succ_id[3], succ_ip[16], succ_port[6], succsucc_id[3], succsucc_ip[16], succsucc_port[6], pred_id[3];
+extern char mesg[128], comand[3], ring[4], id[3], ip[16], tcp[6], succID[3], succIP[16], succTCP[6], succsuccID[3], succsuccIP[16], succsuccTCP[6], predID[3];
 extern int succ_fd, pred_fd, my_fd;
 
 

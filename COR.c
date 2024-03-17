@@ -54,7 +54,7 @@ void UDP_client(char *msg)
 void TCP_Client(char *ip, char *port, char *msg)
 {
 
-    fprintf(stderr, "ENTREI\n");
+    fprintf(stderr, "ENTREI NO TCP SERVER\n");
 
     int fd, errcode;
     ssize_t n;
@@ -68,9 +68,6 @@ void TCP_Client(char *ip, char *port, char *msg)
     fd = socket(AF_INET, SOCK_STREAM, 0);
     if (fd == -1)
         exit(1);
-
-    fprintf(stderr, "FD: %d\n", fd);
-
     succ_fd = fd;
 
     memset(&hints, 0, sizeof hints);
@@ -104,6 +101,9 @@ void TCP_Client(char *ip, char *port, char *msg)
 
 void TCP_Server(char *port)
 {
+
+    fprintf(stderr, "ENTREI NO TCP SERVER\n");
+
     int fd, errcode, newfd;
     ssize_t n;
     socklen_t addrlen;
@@ -292,8 +292,70 @@ int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, 
     return 0;
 }
 
+// void Show_topology(char *id, char *succID, char *succIP, char *succTCP, char *succsuccID, char *succsuccIP, char *succsuccTCP, char *predID)
+//{
+//     printf("%s\n", id);
+//     printf("%s %s %s\n", succID, succIP, succTCP);
+//     printf("%s %s %s\n", succsuccID, succsuccIP, succsuccTCP);
+//     printf("%s\n", predID);
+//     return;
+// }
+
+int process_commands()
+{
+    char msg[128], ring[4], id[3], ip[13], tcp[6], command[3], succID[3], succIP[13], succTCP[6], succsuccID[3], succsuccIP[16], succsuccTCP[6], predID[3];
+
+    // Prompt the user for a command
+    printf("Write the wanted command using the correct format:\n");
+ 
+    scanf("%s %s %s", command, ring, id);
+
+    fprintf(stderr, "COMANDO -> %s \n", command);
+    fprintf(stderr, "RING -> %s \n", ring);
+    fprintf(stderr, "ID -> %s \n", id);
+
+    // If the command is 'x', exit the program immediately
+    if (strcmp(command, "x") == 0)
+    {
+
+        fprintf(stderr, "ENTREI NO COMANDO X \n" );
+
+        return 0; // Exit the program
+    }
+
+    // If the command is 'j', prompt the user for ring and id
+    else if (strcmp(command, "j") == 0)
+    {
+        // Scan the ring and id
+        if (scanf("%s %s", ring, id) != 2)
+        {
+            printf("Invalid input.\n");
+            return 1; // Continue running the program
+        }
+
+        // Validate ring and id
+        if (strlen(ring) != 3 || strlen(id) != 2)
+        {
+            printf("Invalid ring or id.\n");
+            return 1; // Continue running the program
+        }
+
+        // Hardcode the ip and tcp of the node to register
+        char *ip = "127.0.0.1";
+        char *tcp = "60001";
+
+        join(ring, id, ip, tcp, succID, succIP, succTCP);
+    }
+
+    return 1; // Continue running the program
+}
+
+
 int main(int argc, char *argv[]) // Recebe os argumentos do terminal, argc - contador, agrv - cria uma lista tamanho agrc com os
 {
+
+    char msg[128], ring[4], id[3], ip[13], tcp[6], command[3], succID[3], succIP[13], succTCP[6], succsuccID[3], succsuccIP[16], succsuccTCP[6], predID[3];
+
     // Verificar o numero de argumentos
     if (argc < 3 || argc > 5)
         return 1;
@@ -323,32 +385,41 @@ int main(int argc, char *argv[]) // Recebe os argumentos do terminal, argc - con
     // printf("regIP: %s\n", regIP);
     // printf("regUDP: %s\n", regUDP);
 
-    char msg[128], ring[4], id[3], ip[13], tcp[6], command[3], succID[3], succIP[13], succTCP[6];
-
     // Mensagem para o utilizador
-    printf("Write the wanted command using the correct format:\n");
-
-    scanf("%s %s %s", command, ring, id);
+    // printf("Write the wanted command using the correct format:\n");
+    //
+    // scanf("%s %s %s", command, ring, id);
 
     // Verificaçao do que o utlizador escreve no terminal
-    if (strcmp(command, "j") == 0)
-    {
-        if (strlen(ring) != 3)
-        {
-            printf("Anel inválido");
-        }
-        else if (strlen(id) != 2)
-        {
-            printf("No invalido");
-        }
-        else
-        {
-            // Hardcode do ip e tcp do no a registar
-            char *ip = "127.0.0.1";
-            char *tcp = "60001";
+    // if (strcmp(command, "j") == 0)
+    //{
+    //    if (strlen(ring) != 3)
+    //    {
+    //        printf("Anel inválido");
+    //    }
+    //    else if (strlen(id) != 2)
+    //    {
+    //        printf("No invalido");
+    //    }
+    //    else
+    //    {
+    //        // Hardcode do ip e tcp do no a registar
+    //        char *ip = "127.0.0.1";
+    //        char *tcp = "60001";
+    //
+    //        join(ring, id, ip, tcp, succID, succIP, succTCP);
+    //    }
+    //}
 
-            join(ring, id, ip, tcp, succID, succIP, succTCP);
-        }
+    // Show topology when user types 'st'
+    // if (strcmp(command, "st") == 0)
+    //{
+    //    Show_topology(id, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID);
+    //}
+
+    while (1)
+    {
+        process_commands();
     }
 
     // while (1)
