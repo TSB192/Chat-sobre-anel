@@ -64,8 +64,14 @@ char *TCP_Client(char *server_ip, char *server_port, char *msg)
     exit(0);
 }
 
-char *UDP_client(char *msg)
+void UDP_client(char *msg)
 {
+    int fd, errcode;
+    ssize_t n;
+    socklen_t addrlen;
+    struct addrinfo hints, *res;
+    struct sockaddr_in addr;
+
     fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd == -1)
         exit(1);
@@ -74,7 +80,7 @@ char *UDP_client(char *msg)
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
 
-    errcode = getaddrinfo("193.136.138.142", PORT, &hints, &res);
+    errcode = getaddrinfo("tejo.tecnico.ulisboa.pt", "59000", &hints, &res);
     if (errcode != 0)
         exit(1);
 
@@ -83,22 +89,17 @@ char *UDP_client(char *msg)
         exit(1);
 
     addrlen = sizeof(addr);
-
-    n = recvfrom(fd, buffer, sizeof(buffer), 0, (struct sockaddr *)&addr, &addrlen);
+    n = recvfrom(fd, buffer, 200, 0, (struct sockaddr *)&addr, &addrlen);
     if (n == -1)
         exit(1);
 
-    buffer[n] = '\0';
-
     write(1, "echo: ", 6);
     write(1, buffer, n);
-    write(1, "\n", 1);
 
     freeaddrinfo(res);
     close(fd);
 
-    // Close buffer
-    return buffer;
+    return;
 }
 
 // Function to check if the given ID exists in the node list
@@ -132,22 +133,31 @@ int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, 
     snprintf(nodes, sizeof(nodes), "NODES %s", ring);
 
     // Call UDP_client to send the message and receive node_list
-    char *node_list = UDP_client(nodes);
+    // char *node_list = UDP_client(nodes);
+    
+    // Send the nodes message do the UDP Client
+    UDP_client(nodes);
+
+    char *node_list = buffer;
 
     // fprintf(stderr, "LISTA: %s\n", node_list);
 
     // Process the node_list
-    printf("Received response:\n%s\n", node_list);
+    //fprintf(stderr,"Received response:\n%s\n", node_list);
 
     // Extract the succesor id, ip and tcp
     // if (node_list)
     //{
-    if (sscanf(node_list, "NODELIST %s %s %s %s", ring, succID, succIP, succTCP) == 1)
+    if (sscanf(node_list, "NODELIST %s %s %s %s", ring, succID, succIP, succTCP) == 4)
     {
+
+        fprintf(stderr, "RING ID -> %s", ring);
+        fprintf(stderr, "SUCC ID -> %s", succID);
+        fprintf(stderr, "SUCC IP -> %s", succIP);
+        fprintf(stderr, "SUCC TCP -> %s", succTCP);
+
         char tcp_message[128];
         snprintf(tcp_message, sizeof(tcp_message), "ENTRY %s %s %s", id, ip, tcp);
-
-        fprintf(stderr, "%s", tcp_message);
 
         TCP_Client(id, tcp, tcp_message);
 
@@ -191,7 +201,7 @@ int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, 
 
         else
         {
-            // printf("Failed to extract ID, IP, and TCP from the node list.\n");
+            fprintf(stderr, "Failed to extract ID, IP, and TCP from the node list.\n");
         }
     }
 
