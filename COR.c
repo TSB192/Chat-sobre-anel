@@ -146,16 +146,10 @@ int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, 
     //fprintf(stderr,"Received response:\n%s\n", node_list);
 
     // Extract the succesor id, ip and tcp
-    // if (node_list)
-    //{
-    if (sscanf(node_list, "NODELIST %s %s %s %s", ring, succID, succIP, succTCP) == 4)
+    if (node_list)
     {
-
-        fprintf(stderr, "RING ID -> %s", ring);
-        fprintf(stderr, "SUCC ID -> %s", succID);
-        fprintf(stderr, "SUCC IP -> %s", succIP);
-        fprintf(stderr, "SUCC TCP -> %s", succTCP);
-
+    if (sscanf(node_list, "NODELIST %s %s %s %s", ring, succID, succIP, succTCP) == 1)
+    {
         char tcp_message[128];
         snprintf(tcp_message, sizeof(tcp_message), "ENTRY %s %s %s", id, ip, tcp);
 
@@ -163,7 +157,7 @@ int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, 
 
         if (sscanf(node_list, "NODELIST %s %s %s %s", ring, succID, succIP, succTCP) == 4)
         {
-            printf("SUCCESSOR ID: %s\nSUCCESSOR IP: %s\nSUCCESSOR TCP PORT: %s\n", succID, succIP, succTCP);
+            fprintf(stderr, "SUCCESSOR ID: %s\nSUCCESSOR IP: %s\nSUCCESSOR TCP PORT: %s\n", succID, succIP, succTCP);
 
             // Check if the joining ID already exists in the ring
             if (id_exists(node_list, id))
