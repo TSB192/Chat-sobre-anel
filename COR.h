@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <sys/select.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -13,9 +14,9 @@
 #include <strings.h>
 #include <stdlib.h>
 #include <time.h>
+#include <fcntl.h>
 
-
-#define PORT "59000"
+#define PORT "60001"
 #define MAX_NODES 10 // Maximum number of nodes in the list
 
 // variáveis globais
