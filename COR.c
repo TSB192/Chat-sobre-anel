@@ -715,6 +715,9 @@ int main(int argc, char *argv[]) // Recebe os argumentos do terminal, argc - con
     // }
 
     // Main loop
+
+    // ALTERAR
+
     while (1)
     {
         // Set up the file descriptor set
