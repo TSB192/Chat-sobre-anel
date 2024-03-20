@@ -1,10 +1,10 @@
 #include "COR.h"
 
-int errcode, udp_fd, newfd, counter;
-int fd;
-int succ_fd;
-int pred_fd;
-int my_fd;
+// int errcode, udp_fd, newfd, counter;
+// int fd;
+// int succ_fd;
+// int pred_fd;
+// int my_fd;
 fd_set rfds;
 ssize_t n;
 socklen_t addrlen;
@@ -14,7 +14,7 @@ char buffer[1028];
 char udp_buffer[1028];
 char nodes_mesg[10];
 
-char my_ring[4], my_id[3], ip[16], tcp[6], succID[3], succIP[16], succTCP[6], succsuccID[3], succsuccIP[16], succsuccTCP[6], predID[3], index_linha[16][3], index_coluna[16][3], encaminhamento[16][16][50], caminhos[16][50], expedicao[16][2];
+char ip[16], tcp[6], succID[3], succIP[16], succTCP[6], succsuccID[3], succsuccIP[16], succsuccTCP[6], predID[3];
 int succ_fd = -1, pred_fd = -1, my_fd = -1, broke_connection = -1, index_coluna_max = -1, index_linha_max = -1, index_cost[16];
 
 void UDP_Client(char *msg)
@@ -270,37 +270,130 @@ int Read_buffer_Nodeslist(char *buffer)
     return 0;
 }
 
-Node *Create_Node(id, ip, tcp, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID)
+Node *Create_Node(char *id, char *ip, char *tcp)
 {
     // Allocate memory for the Node struct
     Node *Node_reg = malloc(sizeof(Node));
 
-    Node_reg->node_id = id;
-    Node_reg->node_ip = ip;
-    Node_reg->node_port = tcp;
-    Node_reg->succ_id = succID;
-    Node_reg->succ_ip = succIP;
-    Node_reg->succ_port = succTCP;
-    Node_reg->succsucc_id = succsuccID;
-    Node_reg->succsucc_ip = succsuccIP;
-    Node_reg->succsucc_port = succsuccTCP;
-    Node_reg->pred_id = predID;
+    Node_reg->node_id = strdup(id);
+    Node_reg->node_ip = strdup(ip);
+    Node_reg->node_port = strdup(tcp);
+    Node_reg->succ_id = strdup(id);
+    Node_reg->succ_ip = strdup(ip);
+    Node_reg->succ_port = strdup(tcp);
+    Node_reg->succsucc_id = strdup(id);
+    Node_reg->succsucc_ip = strdup(ip);
+    Node_reg->succsucc_port = strdup(tcp);
+    Node_reg->pred_id = strdup(id);
 
     return Node_reg;
 }
 
 Node *Save_Node(Node **Ring, Node *New_Node)
 {
+    int j;
+
     // We have to go trough all the positions and find the next empty one
-    for (size_t i = 0; i < 15; i++)
+    for (int i = 0; i < 16; i++)
     {
         if (Ring[i] == NULL)
         {
+            // Saves the new node in the ring
             Ring[i] = New_Node;
-        }
 
+            Ring[i]->succ_id = Ring[0]->node_id;
+            Ring[i]->succ_ip = Ring[0]->node_ip;
+            Ring[i]->succ_port = Ring[0]->node_port;
+
+            Ring[i]->succsucc_id = Ring[0]->succ_id;
+            Ring[i]->succsucc_ip = Ring[0]->succ_ip;
+            Ring[i]->succsucc_port = Ring[0]->succ_port;
+
+            if (i != 0)
+            {
+                // Update the successor --> From the second node added onwards, the succ of the node previously added is the always the node that was just added
+                Ring[i - 1]->succsucc_id = Ring[i]->succ_id;
+                Ring[i - 1]->succsucc_ip = Ring[i]->succ_ip;
+                Ring[i - 1]->succsucc_port = Ring[i]->succ_port;
+            }
+
+            j = i;
+
+            break;
+        }
     }
-    
+
+    // Update the predecessor of the first node in the ring
+    Ring[0]->pred_id = New_Node->node_id;
+
+    if (j != 0)
+    {
+        // Update the successor --> From the second node added onwards, the succ of the node previously added is the always the node that was just added
+        Ring[j - 1]->succ_id = Ring[j]->node_id;
+        Ring[j - 1]->succ_ip = Ring[j]->node_ip;
+        Ring[j - 1]->succ_port = Ring[j]->node_port;
+
+        // Update the predeccessor --> From the second node added onwards, the pred of the node is always the node previously added
+        Ring[j]->pred_id = Ring[j - 1]->node_id;
+    }
+
+    if (j > 1)
+    {
+        // Update the second successor --> same logic, but with 2 node interval
+        Ring[j - 2]->succsucc_id = Ring[j - 1]->succ_id;
+        Ring[j - 2]->succsucc_ip = Ring[j - 1]->succ_ip;
+        Ring[j - 2]->succsucc_port = Ring[j - 1]->succ_port;
+    }
+}
+
+Node *Fill_Ring(Node **Ring, char **received_list)
+{
+    for (int i = 0; received_list[i]; i++)
+    {
+        // Add pre-existing nodes to the ring
+        char **info = __ft_split(received_list[i], ' ');
+        Node *New_Node = Create_Node(info[0], info[1], info[2]);
+
+        Save_Node(Ring, New_Node);
+    }
+}
+
+Node *Remove_Node(Node **Ring)
+{
+    for (int i = 0; i < 16; i++)
+    {
+        if (Ring[i + 1] == NULL)
+        {
+            if (i == 0)
+            {
+                Ring[i] == NULL;
+                
+                break;
+            }
+            
+            // Update the suc for the previous node
+            Ring[i - 1]->succ_id = Ring[i]->succ_id;
+            Ring[i - 1]->succ_ip = Ring[i]->succ_ip;
+            Ring[i - 1]->succ_port = Ring[i]->succ_port;
+
+            // Update the sucsuc for the previous node
+            Ring[i - 1]->succsucc_id = Ring[i]->succsucc_id;
+            Ring[i - 1]->succsucc_ip = Ring[i]->succsucc_ip;
+            Ring[i - 1]->succsucc_port = Ring[i]->succsucc_port;
+
+            // Update the pred for the previous node
+            Ring[0]->pred_id = Ring[i - 1]->node_id;
+
+            break;
+        }
+    }
+}
+
+Node *Check_Routes(Node **Ring)
+{
+
+    //
+
 }
 
 int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, char *succTCP, char *succsuccID, char *succsuccIP, char *succsuccTCP, char *predID, Node **Ring)
@@ -319,9 +412,16 @@ int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, 
     // Extract the succesor id, ip and tcp
     char **split_mesg = __ft_split(received_list, '\n');
 
-    split = __ft_split(split_mesg[1], ' ');
+    Fill_Ring(Ring, &split_mesg[1]);
 
-    succID = split[0];
+    if (split_mesg[1])
+    {
+        split = __ft_split(split_mesg[1], ' ');
+
+        succID = split[0];
+        succIP = split[1];
+        succTCP = split[2];
+    }
 
     // If there is no succID -> ring has no nodes
     if (succID == NULL || !*succID)
@@ -362,56 +462,26 @@ int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, 
             }
 
             fprintf(stderr, "Final ID: %s\n", id);
-
-            // Extract successor, succsuccessor and predeccessor info
-            for (size_t i = 1; split_mesg[i]; i++)
-            {
-                
-            }
         }
 
         TCP_Server(tcp);
+        fprintf(stderr, "RING -> %s\n", ring);
 
         // Write ENTRY message
         char entry_message[128];
 
         snprintf(entry_message, sizeof(entry_message), "ENTRY %s %s %s", id, ip, tcp);
-
-        if (strcmp(succID, id) != 0)
-        {
-            TCP_Client(succIP, succTCP, entry_message);
-
-            char route_message[128];
-
-            snprintf(route_message, sizeof(route_message), "ROUTE %s %s %s-%s-%s", id, succID, id, id, id);
-
-            strcpy(route_message, "ROUTE ");
-            strcat(route_message, id);
-            strcat(route_message, " ");
-            strcat(route_message, id);
-            strcat(route_message, " ");
-            strcat(route_message, id);
-            strcat(route_message, "\n");
-            strcat(route_message, "\0");
-            n = write(succ_fd, route_message, strlen(route_message));
-            if (n == -1)
-                exit(1);
-            /*index_coluna_max++;
-            strcpy(index_coluna[index_coluna_max],succ_id);
-            index_linha_max++;
-            strcpy(index_linha[index_linha_max],succ_id);*/
-        }
     }
 
     char reg_message[128];
     snprintf(reg_message, sizeof(reg_message), "REG %s %s %s %s", ring, id, ip, tcp);
 
-    fprintf(stderr, "MESG REG: %s\n", reg_message);
-
     UDP_Client(reg_message);
 
     // Create the register node in the node struct
-    Node *New_Node = Create_Node(id, ip, tcp, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID);
+    Node *New_Node = Create_Node(id, ip, tcp);
+
+    // fprintf(stderr, "%s-%s-%s-%s-%s-%s-%s-%s-%s-%s\n", New_Node->node_id, New_Node->node_ip, New_Node->node_port, New_Node->pred_id, New_Node->succ_id, New_Node->succ_ip, New_Node->succ_port, New_Node->succsucc_id, New_Node->succsucc_ip, New_Node->succsucc_port);
 
     // Save the new node in the Ring
     Save_Node(Ring, New_Node);
@@ -419,13 +489,15 @@ int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, 
     return 0;
 }
 
-void Show_topology(char *id, char *succID, char *succIP, char *succTCP, char *succsuccID, char *succsuccIP, char *succsuccTCP, char *predID)
+void Show_topology(char *id, char *succID, char *succIP, char *succTCP, char *succsuccID, char *succsuccIP, char *succsuccTCP, char *predID, Node **Ring)
 {
-    printf("My ID: %s\n", id);
-    printf("Successor info: %s %s %s\n", succID, succIP, succTCP);
-    printf("Successorsuccessor info: %s %s %s\n", succsuccID, succsuccIP, succsuccTCP);
-    printf("Predeccesser info: %s\n", predID);
-    return;
+    for (size_t i = 0; Ring[i]; i++)
+    {
+        printf("Node info: %s\n", Ring[i]->node_id);
+        printf("Sucessor info: %s %s %s\n", Ring[i]->succ_id, Ring[i]->succ_ip, Ring[i]->succ_port);
+        printf("Successor successor info: %s %s %s\n", Ring[i]->succsucc_id, Ring[i]->succsucc_ip, Ring[i]->succsucc_port);
+        printf("Predecestor info: %s\n", Ring[i]->pred_id);
+    }
 }
 
 int Biggest_fd(int fd)
@@ -600,84 +672,14 @@ void Read_buffer_tcp(int fd)
     return;
 }
 
-// int Read_user_input()
-//{
-//
-//     char msg[128], ring[4], id[3], ip[13], tcp[6], command[3], input[100], succID[3], succIP[13], succTCP[6], succsuccID[3], succsuccIP[16], succsuccTCP[6], predID[3];
-//
-//     fgets(input, sizeof(input), stdin);
-//
-//     sscanf(input, "%s", command);
-//
-//     fprintf(stderr, "COMMAND -> %s\n", command);
-//
-//     if (strcmp(command, "x") == 0)
-//     {
-//         printf("Exiting the program...\n");
-//
-//         return 1;
-//     }
-//     else if (strcmp(command, "j") == 0)
-//     {
-//         sscanf(input, "%*s %s %s", ring, id);
-//
-//         fprintf(stderr, "RING -> %s\n", ring);
-//         fprintf(stderr, "ID -> %s\n", id);
-//
-//         if (strlen(ring) != 3)
-//         {
-//             printf("Anel inválido\n");
-//             return 0;
-//         }
-//
-//         else if (strlen(id) != 2)
-//         {
-//             printf("No invalido\n");
-//             return 0;
-//         }
-//
-//         else
-//         {
-//             // Hardcode do ip e tcp do no a registar
-//             char *ip = "127.0.0.1";
-//             char *tcp = "60001";
-//
-//             fprintf(stderr, "ANTES DO JOIN\n");
-//
-//             join(ring, id, ip, tcp, succID, succIP, succTCP);
-//
-//             return 0;
-//         }
-//     }
-//
-//     else if (strcmp(command, "st") == 0)
-//     {
-//         Show_topology(id, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID);
-//
-//         return 0;
-//     }
-//
-//     else
-//     {
-//         printf("Invalid command.\n");
-//
-//         return 0;
-//     }
-// }
-
-void leave(char *ring, char *id)
+void leave(char *ring, char *id, Node **Ring)
 {
     char local_unreg[13], unreg_buffer[8], local_entry[50];
-    ssize_t n;
 
-    strcpy(local_unreg, "UNREG ");
-    strcat(local_unreg, ring);
-    strcat(local_unreg, " ");
-    strcat(local_unreg, id);
-    strcat(local_unreg, "\0");
+    char unreg_message[128];
+    snprintf(unreg_message, sizeof(unreg_message), "UNREG %s %s", ring, id);
 
-    // UDP_Client(local_unreg, unreg_buffer);
-    UDP_Client(local_unreg);
+    UDP_Client(unreg_message);
 
     close(succ_fd);
     succ_fd = -1;
@@ -686,28 +688,23 @@ void leave(char *ring, char *id)
     close(my_fd);
     my_fd = -1;
 
-    memset(my_ring, 0, strlen(my_ring));
-    memset(my_id, 0, strlen(my_id));
-    memset(predID, 0, strlen(predID));
-    memset(succID, 0, strlen(succID));
-    memset(succsuccID, 0, strlen(succsuccID));
-    memset(succIP, 0, strlen(succIP));
-    memset(succsuccIP, 0, strlen(succsuccIP));
-    memset(succTCP, 0, strlen(succTCP));
-    memset(succsuccTCP, 0, strlen(succsuccTCP));
+    Remove_Node(Ring);
 
     return;
 }
 
-// Function returns Node pointer
-
-
 int main(int argc, char *argv[]) // Recebe os argumentos do terminal, argc - contador, agrv - cria uma lista tamanho agrc com os
 {
-    // Ring is a set of 16 nodes (maximum)
-    Node **Ring = malloc(sizeof(Node*) * 16);
+    // Ring is a set of 16 nodes (maximum) -- allocated 16 slots of memory
+    // Node **Ring = malloc(sizeof(Node *) * 16);
+    Node **Ring = calloc(16, sizeof(Node *));
 
-    char *token, buffer[200], ring[4], id[3], command[3];
+    char *ring = malloc(4);
+    char *id = malloc(3);
+    char *command = malloc(2);
+
+    char buffer[200];
+
     int fd, counter, i, j;
     fd_set rfds;
     int newfd;
@@ -717,29 +714,12 @@ int main(int argc, char *argv[]) // Recebe os argumentos do terminal, argc - con
     strcpy(ip, argv[1]);
     strcpy(tcp, argv[2]);
 
-    for (i = 0; i <= 16; i++)
-    {
-        sprintf(index_coluna[i], "%d", -1);
-        sprintf(index_linha[i], "%d", -1);
-        index_cost[i] = 100;
-        for (j = 0; j <= 16; j++)
-        {
-            sprintf(encaminhamento[i][j], "%d", -1);
-        }
-    }
-
-    for (i = 0; i <= 16; i++)
-    {
-        sprintf(expedicao[i], "%d", -1);
-        sprintf(caminhos[i], "%d", -1);
-    }
-
-    printf("Write the wanted command using the correct format:\n");
+    printf("\nWrite the wanted command using the correct format:\n");
     scanf("%s %s %s", command, ring, id);
     // strcpy(my_id,id);
     // strcpy(my_ring,ring);
 
-    join(ring, id, ip, tcp, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID);
+    join(ring, id, ip, tcp, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID, Ring);
 
     while (1)
     {
@@ -762,22 +742,20 @@ int main(int argc, char *argv[]) // Recebe os argumentos do terminal, argc - con
 
             if (buffer[0] == 'j')
             {
-                token = strtok(buffer, " ");
-                token = strtok(NULL, " ");
-                strcpy(my_ring, token);
-                token = strtok(NULL, " ");
-                strcpy(my_id, token);
-                join(ring, id, ip, tcp, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID);
+                char **tokens = __ft_split(buffer, ' ');
+                ring = tokens[1];
+                id = tokens[2];
+                join(ring, id, ip, tcp, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID, Ring);
             }
             else if (buffer[0] == 'l')
             {
-                leave(ring, id);
+                leave(ring, id, Ring);
             }
             else if (buffer[0] == 's')
             {
                 if (buffer[1] == 't')
                 {
-                    Show_topology(id, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID);
+                    Show_topology(id, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID, Ring);
                 }
                 else if (buffer[1] == 'r')
                 {
@@ -788,24 +766,24 @@ int main(int argc, char *argv[]) // Recebe os argumentos do terminal, argc - con
                 else if (buffer[1] == 'f')
                 {
                 }
-                else
-                {
-                    token = strtok(buffer, " ");
-                    token = strtok(NULL, " ");
-                    if (strcmp(token, "topology") == 0)
-                    {
-                        Show_topology(id, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID);
-                    }
-                    else if (strcmp(token, "routing") == 0)
-                    {
-                    }
-                    else if (strcmp(token, "path") == 0)
-                    {
-                    }
-                    else if (strcmp(token, "fowarding") == 0)
-                    {
-                    }
-                }
+                // else
+                // {
+                //     token = strtok(buffer, " ");
+                //     token = strtok(NULL, " ");
+                //     if (strcmp(token, "topology") == 0)
+                //     {
+                //         Show_topology(id, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID, Ring);
+                //     }
+                //     else if (strcmp(token, "routing") == 0)
+                //     {
+                //     }
+                //     else if (strcmp(token, "path") == 0)
+                //     {
+                //     }
+                //     else if (strcmp(token, "fowarding") == 0)
+                //     {
+                //     }
+                // }
             }
             else if (buffer[0] == 'x' || buffer[0] == 'e')
             {

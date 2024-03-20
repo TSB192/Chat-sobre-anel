@@ -24,16 +24,16 @@
 // typedef struct for nodes
 typedef struct Node
 {
-    char node_id;
-    char node_ip;
-    char node_port;
-    char succ_id;
-    char succ_ip;   
-    char succ_port;   
-    char succsucc_id;   
-    char succsucc_ip;   
-    char succsucc_port;
-    char pred_id;   
+    char *node_id; 
+    char *node_ip; 
+    char *node_port;
+    char *succ_id;
+    char *succ_ip;   
+    char *succ_port;   
+    char *succsucc_id;   
+    char *succsucc_ip;   
+    char *succsucc_port;
+    char *pred_id;   
 
 }Node;
 
