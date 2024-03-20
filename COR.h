@@ -19,7 +19,7 @@
 #include <fcntl.h>
 
 #define PORT "59000"
-#define MAX_NODES 10 // Maximum number of nodes in the list
+#define MAX_NODES 16 // Maximum number of nodes in the list
 
 // typedef struct for nodes
 typedef struct Node
