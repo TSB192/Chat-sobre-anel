@@ -12,9 +12,12 @@ struct addrinfo hints, *res;
 struct sockaddr_in addr;
 char buffer[1028];
 char udp_buffer[1028];
-char nodes[10];
+char nodes_mesg[10];
 
-void UDP_client(char *msg)
+char my_ring[4], my_id[3], ip[16], tcp[6], succID[3], succIP[16], succTCP[6], succsuccID[3], succsuccIP[16], succsuccTCP[6], predID[3], index_linha[16][3], index_coluna[16][3], encaminhamento[16][16][50], caminhos[16][50], expedicao[16][2];
+int succ_fd = -1, pred_fd = -1, my_fd = -1, broke_connection = -1, index_coluna_max = -1, index_linha_max = -1, index_cost[16];
+
+void UDP_Client(char *msg)
 {
     int fd, errcode;
     ssize_t n;
@@ -43,8 +46,6 @@ void UDP_client(char *msg)
     if (n == -1)
         exit(1);
 
-    fprintf(stderr, "n: %ld\n", n);
-
     write(1, "echo: ", 6);
     write(1, buffer, n);
 
@@ -56,7 +57,6 @@ void UDP_client(char *msg)
 
 void TCP_Client(char *ip, char *port, char *msg)
 {
-
     int fd, errcode;
     ssize_t n;
     socklen_t addrlen;
@@ -67,9 +67,9 @@ void TCP_Client(char *ip, char *port, char *msg)
     memset(buffer, 0, 200);
 
     fd = socket(AF_INET, SOCK_STREAM, 0);
-
     if (fd == -1)
         exit(1);
+
     succ_fd = fd;
 
     memset(&hints, 0, sizeof hints);
@@ -77,31 +77,16 @@ void TCP_Client(char *ip, char *port, char *msg)
     hints.ai_socktype = SOCK_STREAM;
 
     errcode = getaddrinfo(ip, port, &hints, &res);
-
     if (errcode != 0)
-    {
         exit(1);
-    }
+
     n = connect(fd, res->ai_addr, res->ai_addrlen);
-
     if (n == -1)
-    {
-        perror("connect");
         exit(1);
-    }
-
-    // if (n == -1)
-    //     exit(1);
 
     n = write(fd, msg, strlen(msg));
-
     if (n == -1)
-    {
-        perror("write");
         exit(1);
-    }
-    // if (n == -1)
-    //     exit(1);
 
     // n=read(fd,buffer,200);
     // if(n==-1) exit(1);
@@ -109,123 +94,61 @@ void TCP_Client(char *ip, char *port, char *msg)
     // write(1,"echo: ",6); write(1,buffer,n);
 
     freeaddrinfo(res);
-    close(fd);
+    // close(fd);
 
     return;
 }
 
 void TCP_Server(char *port)
 {
-    struct addrinfo hints, *res;
-    int fd, newfd, errcode;
-    ssize_t n, nw;
-    struct sockaddr addr;
+    int fd, errcode, newfd;
+    ssize_t n;
     socklen_t addrlen;
-    char *ptr, buffer[128];
+    struct addrinfo hints, *res;
+    struct sockaddr_in addr;
+    char buffer[200];
 
-    if ((fd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
-        exit(1); // error
+    fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (fd == -1)
+        exit(1);
+
+    my_fd = fd;
 
     memset(&hints, 0, sizeof hints);
-    hints.ai_family = AF_INET;       // IPv4
-    hints.ai_socktype = SOCK_STREAM; // TCP socket
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
     hints.ai_flags = AI_PASSIVE;
 
-    if ((errcode = getaddrinfo(NULL, port, &hints, &res)) != 0) /*error*/
+    errcode = getaddrinfo(NULL, port, &hints, &res);
+    if (errcode != 0)
         exit(1);
 
-    if (bind(fd, res->ai_addr, res->ai_addrlen) == -1) /*error*/
+    n = bind(fd, res->ai_addr, res->ai_addrlen);
+    if (n == -1)
         exit(1);
 
-    if (listen(fd, 5) == -1) /*error*/
+    if (listen(fd, 5) == -1)
         exit(1);
 
-    fprintf(stderr, "Cheguei aqui")
+    /*while(1){
+        addrlen=sizeof(addr);
+        if((newfd=accept(fd,(struct sockaddr*)&addr,&addrlen))==-1) exit(1);
 
-    while (1)
-    {
-        addrlen = sizeof(addr);
-        if ((newfd = accept(fd, &addr, &addrlen)) == -1)
-            /*error*/ exit(1);
-        while ((n = read(newfd, buffer, 128)) != 0)
-        {
-            if (n == -1) /*error*/
-                exit(1);
-            ptr = &buffer[0];
-            while (n > 0)
-            {
-                if ((nw = write(newfd, ptr, n)) <= 0) /*error*/
-                    exit(1);
-                n -= nw;
-                ptr += nw;
-            }
-        }
+        n=read(newfd,buffer,200);
+        if(n==-1) exit(1);
+        write(1,"received: ",10);write(1,buffer,n);
+
+        n=write(newfd,buffer,n);
+        if(n==-1) exit(1);
+
         close(newfd);
-    }
-    
+    }*/
+
     freeaddrinfo(res);
-    close(fd);
+    // close(fd);
+
     return;
 }
-
-//void TCP_Server(char *port)
-//{
-//    int fd, errcode, newfd;
-//    ssize_t n;
-//    socklen_t addrlen;
-//    struct addrinfo hints, *res;
-//    struct sockaddr_in addr;
-//    char buffer[200];
-//
-//    fd = socket(AF_INET, SOCK_STREAM, 0);
-//
-//    if (fd == -1)
-//        exit(1);
-//
-//    my_fd = fd;
-//
-//    memset(&hints, 0, sizeof hints);
-//    hints.ai_family = AF_INET;
-//    hints.ai_socktype = SOCK_STREAM;
-//    hints.ai_flags = AI_PASSIVE;
-//
-//    errcode = getaddrinfo(NULL, port, &hints, &res);
-//
-//    fprintf(stderr, "ERRORCODE NO TCP SERVER -> %d\n", errcode);
-//
-//    if (errcode != 0)
-//        exit(1);
-//
-//    n = bind(fd, res->ai_addr, res->ai_addrlen);
-//
-//    fprintf(stderr, "N NO TCP SERVER -> %ld\n", n);
-//
-//    if (n == -1)
-//        exit(1);
-//
-//    if (listen(fd, 5) == -1)
-//        exit(1);
-//
-    //while(1)
-    //{
-    //    addrlen=sizeof(addr);
-    //    if((newfd=accept(fd,(struct sockaddr*)&addr,&addrlen))==-1) exit(1);
-//
-    //    n=read(newfd,buffer,200);
-    //    if(n==-1) exit(1);
-    //    write(1,"received: ",10);write(1,buffer,n);
-//
-    //    n=write(newfd,buffer,n);
-    //    if(n==-1) exit(1);
-//
-    //    close(newfd);
-    //}
-
-//    freeaddrinfo(res);
-//    close(fd);
-//
-//    return;
-//}
 
 // Function to check if the given ID exists in the node list
 int id_exists(char *node_list, char *id)
@@ -282,63 +205,141 @@ char **__ft_split(const char *str, int sep)
     return (strings);
 }
 
-int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, char *succTCP)
+int Succ_from_Nodeslist(char *buffer)
+{
+    char *line_token, *id_token, line[50];
+    int aux_out = 0, aux_read = 0;
+
+    line_token = strtok(buffer, "\n");
+    if ((line_token = strtok(NULL, "\n")) != NULL)
+    {
+        strcpy(line, line_token);
+        id_token = strtok(line, " ");
+        strcpy(succID, id_token);
+        while (id_token = strtok(NULL, " "))
+        {
+            if (aux_read == 0)
+            {
+                strcpy(succIP, id_token);
+                aux_read++;
+            }
+            else if (aux_read == 1)
+            {
+                strcpy(succTCP, id_token);
+                aux_read++;
+                return 0;
+            }
+        }
+        return 0;
+    }
+
+    return 1;
+}
+
+int Read_buffer_Nodeslist(char *buffer)
+{
+    char *line_token, *id_token, id[3], ip[20], port[20], line[50];
+    int aux = 0, l = 0, c = 0;
+    char id_list[11] = "0123456789";
+
+    line_token = strtok(buffer, "\n");
+    do
+    {
+        if (aux == 0)
+        {
+            aux++;
+        }
+        else
+        {
+            strcpy(line, line_token);
+            id_token = strtok(line, " ");
+            if (strcmp(id, id_token) == 0)
+            {
+                id[1] = id_list[l];
+                l++;
+                if (l == 9)
+                {
+                    l = 0;
+                    c++;
+                }
+                id[0] = id_list[c];
+                return 1;
+            }
+        }
+    } while (line_token = strtok(NULL, "\n"));
+    return 0;
+}
+
+Node *Create_Node(id, ip, tcp, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID)
+{
+    // Allocate memory for the Node struct
+    Node *Node_reg = malloc(sizeof(Node));
+
+    Node_reg->node_id = id;
+    Node_reg->node_ip = ip;
+    Node_reg->node_port = tcp;
+    Node_reg->succ_id = succID;
+    Node_reg->succ_ip = succIP;
+    Node_reg->succ_port = succTCP;
+    Node_reg->succsucc_id = succsuccID;
+    Node_reg->succsucc_ip = succsuccIP;
+    Node_reg->succsucc_port = succsuccTCP;
+    Node_reg->pred_id = predID;
+
+    return Node_reg;
+}
+
+Node *Save_Node(Node **Ring, Node *New_Node)
+{
+    // We have to go trough all the positions and find the next empty one
+    for (size_t i = 0; i < 15; i++)
+    {
+        if (Ring[i] == NULL)
+        {
+            Ring[i] = New_Node;
+        }
+
+    }
+    
+}
+
+int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, char *succTCP, char *succsuccID, char *succsuccIP, char *succsuccTCP, char *predID, Node **Ring)
 {
     char **split;
 
     // Formulate the message with "NODES r" format
-    snprintf(nodes, sizeof(nodes), "NODES %s", ring);
-
-    // Call UDP_client to send the message and receive node_list
-    // char *node_list = UDP_client(nodes);
+    snprintf(nodes_mesg, sizeof(nodes_mesg), "NODES %s", ring);
 
     // Send the nodes message do the UDP Client
-    UDP_client(nodes);
+    UDP_Client(nodes_mesg);
 
-    char *node_list = buffer;
+    char *received_list = buffer;
     succID == NULL;
-    // Process the node_list
-    // fprintf(stderr, "Received response:\n%s\n", node_list);
 
     // Extract the succesor id, ip and tcp
+    char **split_mesg = __ft_split(received_list, '\n');
 
-    char **bastos = __ft_split(node_list, '\n');
+    split = __ft_split(split_mesg[1], ' ');
 
-    if (bastos[1])
-    {
-        split = __ft_split(bastos[1], ' ');
+    succID = split[0];
 
-        succID = split[0];
-        succIP = split[1];
-        succTCP = split[2];
-    }
-
-    fprintf(stderr, "SUCCID -> %s\n", succID);
-
+    // If there is no succID -> ring has no nodes
     if (succID == NULL || !*succID)
     {
-
-        fprintf(stderr, "PORT ENVIADO PARA SERVER -> %s\n", tcp);
-
-        TCP_Server(tcp);
-
-        // Establish a TCP connection to the successor node
-        char tcp_message[128];
-        snprintf(tcp_message, sizeof(tcp_message), "REG %s %s %s", id, ip, tcp);
-
-        fprintf(stderr, "LOCAL REG: %s\n", tcp_message);
-
-        // If node is empty then the node is its own successor
-
-        fprintf(stderr, "PORT ENVIADO PARA CLIENT -> %s\n", tcp);
-
-        TCP_Client(ip, tcp, tcp_message);
+        // The node becomes its own successor, succsuccessor and predeccessor
+        strcpy(succID, id);
+        strcpy(succIP, ip);
+        strcpy(succTCP, tcp);
+        strcpy(predID, id);
+        strcpy(succsuccID, id);
+        strcpy(succsuccIP, ip);
+        strcpy(succsuccTCP, tcp);
     }
 
     if (succID != NULL)
     {
         // Check if the joining ID already exists in the ring
-        if (id_exists(node_list, id))
+        if (id_exists(received_list, id))
         {
             fprintf(stderr, "ID %s already exists in the ring. Generating a new ID...\n", id);
 
@@ -352,7 +353,7 @@ int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, 
 
             // Now, we need to recheck if the new ID exists in the node list
             // If it does, repeat the process until we find a unique ID
-            while (id_exists(node_list, id))
+            while (id_exists(received_list, id))
             {
                 fprintf(stderr, "New ID %s already exists in the ring. Generating another new ID...\n", id);
 
@@ -361,51 +362,83 @@ int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, 
             }
 
             fprintf(stderr, "Final ID: %s\n", id);
+
+            // Extract successor, succsuccessor and predeccessor info
+            for (size_t i = 1; split_mesg[i]; i++)
+            {
+                
+            }
         }
 
         TCP_Server(tcp);
 
-        // Establish a TCP connection to the successor node
-        char tcp_message[128];
-        snprintf(tcp_message, sizeof(tcp_message), "REG %s %s %s %s", ring, id, ip, tcp);
+        // Write ENTRY message
+        char entry_message[128];
 
-        fprintf(stderr, "LOCAL REG: %s\n", tcp_message);
+        snprintf(entry_message, sizeof(entry_message), "ENTRY %s %s %s", id, ip, tcp);
 
-        TCP_Client(succIP, succTCP, tcp_message);
+        if (strcmp(succID, id) != 0)
+        {
+            TCP_Client(succIP, succTCP, entry_message);
 
-        fprintf(stderr, "BAZEI DO TCP\n");
+            char route_message[128];
+
+            snprintf(route_message, sizeof(route_message), "ROUTE %s %s %s-%s-%s", id, succID, id, id, id);
+
+            strcpy(route_message, "ROUTE ");
+            strcat(route_message, id);
+            strcat(route_message, " ");
+            strcat(route_message, id);
+            strcat(route_message, " ");
+            strcat(route_message, id);
+            strcat(route_message, "\n");
+            strcat(route_message, "\0");
+            n = write(succ_fd, route_message, strlen(route_message));
+            if (n == -1)
+                exit(1);
+            /*index_coluna_max++;
+            strcpy(index_coluna[index_coluna_max],succ_id);
+            index_linha_max++;
+            strcpy(index_linha[index_linha_max],succ_id);*/
+        }
     }
 
-    char registo[128];
-    snprintf(registo, sizeof(registo), "REG %s %s %s %s", ring, id, ip, tcp);
+    char reg_message[128];
+    snprintf(reg_message, sizeof(reg_message), "REG %s %s %s %s", ring, id, ip, tcp);
 
-    fprintf(stderr, "LOCAL REG: %s\n", registo);
+    fprintf(stderr, "MESG REG: %s\n", reg_message);
 
-    UDP_client(registo);
+    UDP_Client(reg_message);
+
+    // Create the register node in the node struct
+    Node *New_Node = Create_Node(id, ip, tcp, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID);
+
+    // Save the new node in the Ring
+    Save_Node(Ring, New_Node);
 
     return 0;
 }
 
 void Show_topology(char *id, char *succID, char *succIP, char *succTCP, char *succsuccID, char *succsuccIP, char *succsuccTCP, char *predID)
 {
-    printf("%s\n", id);
-    printf("%s %s %s\n", succID, succIP, succTCP);
-    printf("%s %s %s\n", succsuccID, succsuccIP, succsuccTCP);
-    printf("%s\n", predID);
+    printf("My ID: %s\n", id);
+    printf("Successor info: %s %s %s\n", succID, succIP, succTCP);
+    printf("Successorsuccessor info: %s %s %s\n", succsuccID, succsuccIP, succsuccTCP);
+    printf("Predeccesser info: %s\n", predID);
     return;
 }
 
 int Biggest_fd(int fd)
 {
-    int max_fd = my_fd;
+    fd = -1;
 
-    if (pred_fd > max_fd)
-        max_fd = pred_fd;
+    fd = my_fd;
+    if (succ_fd > fd)
+        fd = succ_fd;
+    if (pred_fd > fd)
+        fd = pred_fd;
 
-    if (succ_fd > max_fd)
-        max_fd = succ_fd;
-
-    return max_fd;
+    return fd;
 }
 
 void Read_buffer_tcp(int fd)
@@ -567,227 +600,238 @@ void Read_buffer_tcp(int fd)
     return;
 }
 
-int Read_user_input()
+// int Read_user_input()
+//{
+//
+//     char msg[128], ring[4], id[3], ip[13], tcp[6], command[3], input[100], succID[3], succIP[13], succTCP[6], succsuccID[3], succsuccIP[16], succsuccTCP[6], predID[3];
+//
+//     fgets(input, sizeof(input), stdin);
+//
+//     sscanf(input, "%s", command);
+//
+//     fprintf(stderr, "COMMAND -> %s\n", command);
+//
+//     if (strcmp(command, "x") == 0)
+//     {
+//         printf("Exiting the program...\n");
+//
+//         return 1;
+//     }
+//     else if (strcmp(command, "j") == 0)
+//     {
+//         sscanf(input, "%*s %s %s", ring, id);
+//
+//         fprintf(stderr, "RING -> %s\n", ring);
+//         fprintf(stderr, "ID -> %s\n", id);
+//
+//         if (strlen(ring) != 3)
+//         {
+//             printf("Anel inválido\n");
+//             return 0;
+//         }
+//
+//         else if (strlen(id) != 2)
+//         {
+//             printf("No invalido\n");
+//             return 0;
+//         }
+//
+//         else
+//         {
+//             // Hardcode do ip e tcp do no a registar
+//             char *ip = "127.0.0.1";
+//             char *tcp = "60001";
+//
+//             fprintf(stderr, "ANTES DO JOIN\n");
+//
+//             join(ring, id, ip, tcp, succID, succIP, succTCP);
+//
+//             return 0;
+//         }
+//     }
+//
+//     else if (strcmp(command, "st") == 0)
+//     {
+//         Show_topology(id, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID);
+//
+//         return 0;
+//     }
+//
+//     else
+//     {
+//         printf("Invalid command.\n");
+//
+//         return 0;
+//     }
+// }
+
+void leave(char *ring, char *id)
 {
+    char local_unreg[13], unreg_buffer[8], local_entry[50];
+    ssize_t n;
 
-    char msg[128], ring[4], id[3], ip[13], tcp[6], command[3], input[100], succID[3], succIP[13], succTCP[6], succsuccID[3], succsuccIP[16], succsuccTCP[6], predID[3];
+    strcpy(local_unreg, "UNREG ");
+    strcat(local_unreg, ring);
+    strcat(local_unreg, " ");
+    strcat(local_unreg, id);
+    strcat(local_unreg, "\0");
 
-    fgets(input, sizeof(input), stdin);
+    // UDP_Client(local_unreg, unreg_buffer);
+    UDP_Client(local_unreg);
 
-    sscanf(input, "%s", command);
+    close(succ_fd);
+    succ_fd = -1;
+    close(pred_fd);
+    pred_fd = -1;
+    close(my_fd);
+    my_fd = -1;
 
-    fprintf(stderr, "COMMAND -> %s\n", command);
+    memset(my_ring, 0, strlen(my_ring));
+    memset(my_id, 0, strlen(my_id));
+    memset(predID, 0, strlen(predID));
+    memset(succID, 0, strlen(succID));
+    memset(succsuccID, 0, strlen(succsuccID));
+    memset(succIP, 0, strlen(succIP));
+    memset(succsuccIP, 0, strlen(succsuccIP));
+    memset(succTCP, 0, strlen(succTCP));
+    memset(succsuccTCP, 0, strlen(succsuccTCP));
 
-    if (strcmp(command, "x") == 0)
-    {
-        printf("Exiting the program...\n");
-
-        return 1;
-    }
-    else if (strcmp(command, "j") == 0)
-    {
-        sscanf(input, "%*s %s %s", ring, id);
-
-        fprintf(stderr, "RING -> %s\n", ring);
-        fprintf(stderr, "ID -> %s\n", id);
-
-        if (strlen(ring) != 3)
-        {
-            printf("Anel inválido\n");
-            return 0;
-        }
-
-        else if (strlen(id) != 2)
-        {
-            printf("No invalido\n");
-            return 0;
-        }
-
-        else
-        {
-            // Hardcode do ip e tcp do no a registar
-            char *ip = "127.0.0.1";
-            char *tcp = "60001";
-
-            join(ring, id, ip, tcp, succID, succIP, succTCP);
-
-            return 0;
-        }
-    }
-
-    else if (strcmp(command, "st") == 0)
-    {
-        Show_topology(id, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID);
-
-        return 0;
-    }
-
-    else
-    {
-        printf("Invalid command.\n");
-
-        return 0;
-    }
+    return;
 }
+
+// Function returns Node pointer
+
 
 int main(int argc, char *argv[]) // Recebe os argumentos do terminal, argc - contador, agrv - cria uma lista tamanho agrc com os
 {
+    // Ring is a set of 16 nodes (maximum)
+    Node **Ring = malloc(sizeof(Node*) * 16);
 
-    int my_fd, pred_fed, succ_fd;
+    char *token, buffer[200], ring[4], id[3], command[3];
+    int fd, counter, i, j;
+    fd_set rfds;
+    int newfd;
+    socklen_t addrlen;
+    struct sockaddr_in addr;
 
-    my_fd = socket(AF_INET, SOCK_STREAM, 0);
-    pred_fd = socket(AF_INET, SOCK_STREAM, 0);
-    succ_fd = socket(AF_INET, SOCK_STREAM, 0);
+    strcpy(ip, argv[1]);
+    strcpy(tcp, argv[2]);
 
-    char msg[128], ring[4], id[3], ip[13], tcp[6], command[3], input[100], succID[3], succIP[13], succTCP[6], succsuccID[3], succsuccIP[16], succsuccTCP[6], predID[3];
-
-    // Verificar o numero de argumentos
-    // if (argc < 3 || argc > 5)
-    //    return 1;
-    //
-    // char *regIP;
-    // char *regUDP;
-    //
-    // Verificar se o utilizador fornece regIP e regUDP
-    // if (argv[3] == NULL)
-    //{
-    //    regIP = strdup("193.136.138.142"); // Copia e aloca memória
-    //    regUDP = strdup("60001");
-    //}
-    // else
-    //{
-    //    regIP = argv[3];
-    //    regUDP = argv[4];
-    //}
-
-    // while (1)
-    // {
-    //     printf("\nWrite the wanted command using the correct format:\n");
-    //
-    //     fgets(input, sizeof(input), stdin);
-    //
-    //     sscanf(input, "%s", command);
-    //
-    //     fprintf(stderr, "COMMAND -> %s\n", command);
-    //
-    //     if (strcmp(command, "x") == 0)
-    //     {
-    //         printf("Exiting the program...\n");
-    //         break;
-    //     }
-    //     else if (strcmp(command, "j") == 0)
-    //     {
-    //         sscanf(input, "%*s %s %s", ring, id);
-    //
-    //         fprintf(stderr, "RING -> %s\n", ring);
-    //         fprintf(stderr, "ID -> %s\n", id);
-    //
-    //         if (strlen(ring) != 3)
-    //         {
-    //             printf("Anel inválido");
-    //         }
-    //
-    //         else if (strlen(id) != 2)
-    //         {
-    //             printf("No invalido");
-    //         }
-    //
-    //         else
-    //         {
-    //             // Hardcode do ip e tcp do no a registar
-    //             char *ip = "127.0.0.1";
-    //             char *tcp = "60001";
-    //
-    //             join(ring, id, ip, tcp, succID, succIP, succTCP);
-    //         }
-    //
-    //     }
-    //
-    //     else if (strcmp(command, "st") == 0)
-    //     {
-    //         Show_topology(id, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID);
-    //     }
-    //
-    //     else
-    //     {
-    //         printf("Invalid command.\n");
-    //     }
-    // }
-
-    // Main loop
-
-    // ALTERAR
-
-    while (1)
+    for (i = 0; i <= 16; i++)
     {
-        // Set up the file descriptor set
-        FD_ZERO(&rfds);
-        FD_SET(0, &rfds);       // Add stdin to the set
-        FD_SET(my_fd, &rfds);   // Add my_fd to the set
-        FD_SET(succ_fd, &rfds); // Add succ_fd to the set
-        FD_SET(pred_fd, &rfds); // Add pred_fd to the set
-
-        // Find the maximum file descriptor
-        int max_fd = Biggest_fd(fd);
-
-        // Set the timeout
-        struct timeval tv;
-        tv.tv_sec = 10; // 10 seconds timeout
-        tv.tv_usec = 0;
-
-        // Wait for input on any file descriptor in the set
-        fprintf(stderr, "Write the wanted command using the correct format:\n");
-        int counter = select(1, &rfds, NULL, NULL, &tv); // Monitoring only stdin
-
-        fprintf(stderr, "COUNTER -> %d\n", counter);
-
-        if (counter == -1)
+        sprintf(index_coluna[i], "%d", -1);
+        sprintf(index_linha[i], "%d", -1);
+        index_cost[i] = 100;
+        for (j = 0; j <= 16; j++)
         {
-            perror("select");
-            exit(EXIT_FAILURE);
-        }
-        // else if (counter > 0)
-        // {
-        // Check if input is available on stdin
-        if (FD_ISSET(0, &rfds))
-        {
-            // Input is available on stdin, read it
-            if (Read_user_input() != 0)
-            {
-                break; // Exit the loop if Read_user_input() returns non-zero
-            }
-        }
-        if (FD_ISSET(succ_fd, &rfds))
-        {
-            // Handle data on the successor socket
-            Read_buffer_tcp(succ_fd);
-        }
-        if (FD_ISSET(pred_fd, &rfds))
-        {
-            // Handle data on the predecessor socket
-            Read_buffer_tcp(pred_fd);
-        }
-        if (FD_ISSET(my_fd, &rfds))
-        {
-            // Handle data on the server socket
-            addrlen = sizeof(addr);
-            if ((newfd = accept(my_fd, (struct sockaddr *)&addr, &addrlen)) == -1)
-            {
-                perror("accept");
-                exit(1);
-            }
-            Read_buffer_tcp(newfd);
-        }
-        //}
-        else
-        {
-            // Timeout occurred
-            printf("TIMOUT! No input received within 10 seconds.\n");
+            sprintf(encaminhamento[i][j], "%d", -1);
         }
     }
 
-    // free(regIP);
-    // free(regUDP);
+    for (i = 0; i <= 16; i++)
+    {
+        sprintf(expedicao[i], "%d", -1);
+        sprintf(caminhos[i], "%d", -1);
+    }
 
-    return 0;
+    printf("Write the wanted command using the correct format:\n");
+    scanf("%s %s %s", command, ring, id);
+    // strcpy(my_id,id);
+    // strcpy(my_ring,ring);
+
+    join(ring, id, ip, tcp, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID);
+
+    while (1)
+    {
+        fd = Biggest_fd(fd);
+        printf("\n");
+        FD_ZERO(&rfds);         /* remover todos os descritores do conjunto */
+        FD_SET(0, &rfds);       /* adicionar o descritor 0 (stdin) ao conjunto */
+        FD_SET(my_fd, &rfds);   /* adicionar o descritor fd (socket TCP) ao conjunto */
+        FD_SET(pred_fd, &rfds); /* adicionar o descritor 0 (stdin) ao conjunto */
+        FD_SET(succ_fd, &rfds); /* adicionar o descritor fd (socket TCP) ao conjunto */
+
+        counter = select(fd + 1, &rfds, (fd_set *)NULL, (fd_set *)NULL, (struct timeval *)NULL);
+        if (counter == -1)
+            exit(1);
+
+        if (FD_ISSET(0, &rfds) != 0)
+        {
+            memset(buffer, 0, 200);
+            fgets(buffer, 200, stdin);
+
+            if (buffer[0] == 'j')
+            {
+                token = strtok(buffer, " ");
+                token = strtok(NULL, " ");
+                strcpy(my_ring, token);
+                token = strtok(NULL, " ");
+                strcpy(my_id, token);
+                join(ring, id, ip, tcp, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID);
+            }
+            else if (buffer[0] == 'l')
+            {
+                leave(ring, id);
+            }
+            else if (buffer[0] == 's')
+            {
+                if (buffer[1] == 't')
+                {
+                    Show_topology(id, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID);
+                }
+                else if (buffer[1] == 'r')
+                {
+                }
+                else if (buffer[1] == 'p')
+                {
+                }
+                else if (buffer[1] == 'f')
+                {
+                }
+                else
+                {
+                    token = strtok(buffer, " ");
+                    token = strtok(NULL, " ");
+                    if (strcmp(token, "topology") == 0)
+                    {
+                        Show_topology(id, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID);
+                    }
+                    else if (strcmp(token, "routing") == 0)
+                    {
+                    }
+                    else if (strcmp(token, "path") == 0)
+                    {
+                    }
+                    else if (strcmp(token, "fowarding") == 0)
+                    {
+                    }
+                }
+            }
+            else if (buffer[0] == 'x' || buffer[0] == 'e')
+            {
+                return 0;
+            }
+            else if (buffer[0] == 'm')
+            {
+            }
+        }
+        if (FD_ISSET(my_fd, &rfds) != 0)
+        {
+            addrlen = sizeof(addr);
+            if ((newfd = accept(my_fd, (struct sockaddr *)&addr, &addrlen)) == -1)
+                exit(1);
+            Read_buffer_tcp(newfd);
+        }
+        if (FD_ISSET(pred_fd, &rfds) != 0)
+        {
+            Read_buffer_tcp(pred_fd);
+        }
+        if (FD_ISSET(succ_fd, &rfds) != 0)
+        {
+            Read_buffer_tcp(succ_fd);
+        }
+        // printf("new cycle");
+    }
+
+    // return 0;
 }

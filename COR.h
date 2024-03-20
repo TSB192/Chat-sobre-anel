@@ -1,6 +1,8 @@
 #ifndef COR_H
 #define COR_H
 
+#define max(A,B) ((A)>=(B)?(A):(B))
+
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -16,27 +18,24 @@
 #include <time.h>
 #include <fcntl.h>
 
-#define PORT "60001"
+#define PORT "59000"
 #define MAX_NODES 10 // Maximum number of nodes in the list
 
-// variáveis globais
-extern char mesg[128], comand[3], ring[4], id[3], ip[16], tcp[6], succID[3], succIP[16], succTCP[6], succsuccID[3], succsuccIP[16], succsuccTCP[6], predID[3];
-extern int succ_fd, pred_fd, my_fd;
+// typedef struct for nodes
+typedef struct Node
+{
+    char node_id;
+    char node_ip;
+    char node_port;
+    char succ_id;
+    char succ_ip;   
+    char succ_port;   
+    char succsucc_id;   
+    char succsucc_ip;   
+    char succsucc_port;
+    char pred_id;   
 
-
-// funções de criação de client UDP
-void UDP_client(char *msg);
-
-// funções de criação de client/server TCP
-void TCP_Client(char *ip, char *port, char *msg);
-void TCP_Server(char *port);
-
-// funções de leitura de buffer
-void Read_buffer_space_udp(char *buffer, char *id, char *ip, char *port);
-void Read_buffer_LF(char *buffer, char *id, char *ip, char *port);
-int Read_buffer_Nodeslist(char *buffer);
-int Succ_from_Nodeslist(char *buffer);
-void Read_buffer_tcp(int fd);
+}Node;
 
 
 
