@@ -37,8 +37,8 @@ typedef struct Node
     char *chord_id;  
     char *chord_ip;  
     char *chord_port;  
-
 }Node;
+
 
 
 
