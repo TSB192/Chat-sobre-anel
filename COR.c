@@ -348,6 +348,16 @@ Node *Save_Node(Node **Ring, Node *New_Node)
 
 Node *Fill_Ring(Node **Ring, char **received_list)
 {
+    for (int i = 0; i < 16; i++)
+    {
+        if (Ring[i])
+        {
+            // Clean the ring before updating it
+            free(Ring[i]);
+            Ring[i] = NULL;
+        }
+    }
+
     for (int i = 0; received_list[i]; i++)
     {
         // Add pre-existing nodes to the ring
@@ -366,11 +376,11 @@ Node *Remove_Node(Node **Ring)
         {
             if (i == 0)
             {
-                Ring[i] == NULL;
-                
+                Ring[i] = NULL;
+
                 break;
             }
-            
+
             // Update the suc for the previous node
             Ring[i - 1]->succ_id = Ring[i]->succ_id;
             Ring[i - 1]->succ_ip = Ring[i]->succ_ip;
@@ -384,16 +394,120 @@ Node *Remove_Node(Node **Ring)
             // Update the pred for the previous node
             Ring[0]->pred_id = Ring[i - 1]->node_id;
 
+            free(Ring[i]);
+            Ring[i] = NULL;
+
             break;
         }
     }
 }
 
-Node *Check_Routes(Node **Ring)
+// Create route table
+char *Create_Table_Route(Node **Ring, char *dest_id, int flag)
 {
+    int origin;
+    char *encaminhamento_right = calloc(32, 1);
+    char *encaminhamento_left = calloc(32, 1);
 
-    //
+    // char *encaminhamento_chord = malloc(32);
 
+    for (int i = 0; i < 16; i++)
+    {
+        // Check last node added to the ring
+        if (Ring[i + 1] == NULL)
+        {
+            origin = i;
+            break;
+        }
+    }
+
+    fprintf(stderr, "DESTINO: %s", dest_id);
+
+    // Add the node id of the origin to the array
+    strcat(encaminhamento_right, Ring[origin]->node_id);
+    strcat(encaminhamento_left, Ring[origin]->node_id);
+    // strcat(encaminhamento_chord, Ring[origin]->node_id);
+
+    // Coluna de encaminhamento do caminho para a direita
+    for (int i = 0; i < origin; i++)
+    {
+
+        // String inteira menos o valor de destino
+        if (strncmp(Ring[i]->node_id, dest_id, 2))
+        {
+
+            strcat(encaminhamento_right, "-");
+            strcat(encaminhamento_right, Ring[i]->node_id);
+        }
+        // Add destiny value
+        else
+        {
+            strcat(encaminhamento_right, "-");
+            strcat(encaminhamento_right, dest_id);
+            break;
+        }
+    }
+    // Coluna de encaminhamento do caminho para a esquerda
+    for (int i = 1; i <= origin; i++)
+    {
+        // String inteira menos o valor de destino
+        if (strncmp(Ring[origin - i]->node_id, dest_id, 2))
+        {
+            strcat(encaminhamento_left, "-");
+            strcat(encaminhamento_left, Ring[origin - i]->node_id);
+        }
+        // Add destiny value
+        else
+        {
+            strcat(encaminhamento_left, "-");
+            strcat(encaminhamento_left, dest_id);
+            break;
+        }
+    }
+
+    // Coluna de encaminhamento do caminho para a corda
+    // for (int i = 0; i < origin ; i++)
+    // {
+    //     // String inteira menos o valor de destino
+    //     if (Ring[i]->chord_id != dest_id)
+    //     {
+    //         strcat(encaminhamento_chord, "-");
+    //         strcat(encaminhamento_chord, Ring[i]->node_id);
+    //     }
+    //     // Add destiny value
+    //     else
+    //     {
+    //         strcat(encaminhamento_chord, "-");
+    //         strcat(encaminhamento_chord, dest_id);
+    //         strcat(encaminhamento_chord, "\n");
+    //         break;
+    //     }
+    // }
+
+    if (flag)
+    {
+        printf("Caminhos direita %s\n", encaminhamento_right);
+        printf("Caminhos esquerda %s\n", encaminhamento_left);
+    }
+
+    // Check which string is shorter, and returns it
+    return (strlen(encaminhamento_left) > strlen(encaminhamento_right) ? encaminhamento_right : encaminhamento_left);
+}
+
+// Create shortest path table
+char *Create_Table_Path(Node **Ring, char *dest_id)
+{
+    printf("%s", Create_Table_Route(Ring, dest_id, 0));
+}
+
+// Create fowarding table
+char *Create_Table_Foward(Node **Ring)
+{
+    for (int i = 0; i < count; i++)
+    {
+        Create_Table_Path()
+    }
+    
 }
 
 int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, char *succTCP, char *succsuccID, char *succsuccIP, char *succsuccTCP, char *predID, Node **Ring)
@@ -434,6 +548,14 @@ int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, 
         strcpy(succsuccID, id);
         strcpy(succsuccIP, ip);
         strcpy(succsuccTCP, tcp);
+
+        // Create the register node in the node struct
+        Node *New_Node = Create_Node(id, ip, tcp);
+
+        // Save the new node in the Ring
+        Save_Node(Ring, New_Node);
+
+        // Create_Table(Ring);
     }
 
     if (succID != NULL)
@@ -464,13 +586,24 @@ int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, 
             fprintf(stderr, "Final ID: %s\n", id);
         }
 
+        // Create the register node in the node struct
+        Node *New_Node = Create_Node(id, ip, tcp);
+
+        // Save the new node in the Ring
+        Save_Node(Ring, New_Node);
+
         TCP_Server(tcp);
+
         fprintf(stderr, "RING -> %s\n", ring);
 
         // Write ENTRY message
         char entry_message[128];
 
         snprintf(entry_message, sizeof(entry_message), "ENTRY %s %s %s", id, ip, tcp);
+
+        // TCP_Client(ip, tcp, entry_message);
+
+        // Create_Table(Ring);
     }
 
     char reg_message[128];
@@ -479,18 +612,27 @@ int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, 
     UDP_Client(reg_message);
 
     // Create the register node in the node struct
-    Node *New_Node = Create_Node(id, ip, tcp);
-
-    // fprintf(stderr, "%s-%s-%s-%s-%s-%s-%s-%s-%s-%s\n", New_Node->node_id, New_Node->node_ip, New_Node->node_port, New_Node->pred_id, New_Node->succ_id, New_Node->succ_ip, New_Node->succ_port, New_Node->succsucc_id, New_Node->succsucc_ip, New_Node->succsucc_port);
+    // Node *New_Node = Create_Node(id, ip, tcp);
 
     // Save the new node in the Ring
-    Save_Node(Ring, New_Node);
+    // Save_Node(Ring, New_Node);
+
+    // Check_Routes(Ring);
 
     return 0;
 }
 
 void Show_topology(char *id, char *succID, char *succIP, char *succTCP, char *succsuccID, char *succsuccIP, char *succsuccTCP, char *predID, Node **Ring)
 {
+
+    UDP_Client("NODES 092");
+
+    char *received_list = buffer;
+
+    char **split_mesg = __ft_split(received_list, '\n');
+
+    Fill_Ring(Ring, &split_mesg[1]);
+
     for (size_t i = 0; Ring[i]; i++)
     {
         printf("Node info: %s\n", Ring[i]->node_id);
@@ -502,18 +644,21 @@ void Show_topology(char *id, char *succID, char *succIP, char *succTCP, char *su
 
 int Biggest_fd(int fd)
 {
-    fd = -1;
-
+    // Initialize fd to the first file descriptor
     fd = my_fd;
+
+    // Update fd if succ_fd is larger
     if (succ_fd > fd)
         fd = succ_fd;
+
+    // Update fd if pred_fd is larger
     if (pred_fd > fd)
         fd = pred_fd;
 
     return fd;
 }
 
-void Read_buffer_tcp(int fd)
+void Read_buffer_tcp(int fd, Node **Ring)
 {
 
     char msg[128], ring[4], id[3], ip[13], tcp[6], command[3], input[100], succID[3], succIP[13], succTCP[6], succsuccID[3], succsuccIP[16], succsuccTCP[6], predID[3];
@@ -534,12 +679,22 @@ void Read_buffer_tcp(int fd)
     token = strtok(line, " ");
     if (strcmp(token, "ENTRY") == 0)
     {
+        // Split the tokenized received message by space ' '
+        // char **split_mesg = __ft_split(token, ' ');
+
+        fprintf(stderr, "FD -> %d\n", fd);
+
+        fprintf(stderr, "SUCC FD -> %d\n", succ_fd);
+
         if (fd == succ_fd)
         {
             close(succ_fd);
             aux = 0;
+
             while (token = strtok(NULL, " "))
             {
+                fprintf(stderr, "\nTOKEN WHEN FD == SECC_FD-> %s\n", token);
+
                 if (aux == 0)
                 {
                     strcpy(id_funcao, token);
@@ -578,28 +733,36 @@ void Read_buffer_tcp(int fd)
             strcat(local_pred, "\0");
             TCP_Client(succIP, succTCP, local_pred);
         }
+
         else
         {
             aux = 0;
             while (token = strtok(NULL, " "))
             {
+                fprintf(stderr, "\nTOKEN NO ELSE -> %s\n", token);
+
+                // First cycle
                 if (aux == 0)
                 {
                     strcpy(id_funcao, token);
                     strcpy(predID, token);
                     aux++;
                 }
+                // Second cycle
                 else if (aux == 1)
                 {
                     strcpy(ip_funcao, token);
                     aux++;
                 }
+                // Third cyle
                 else if (aux == 2)
                 {
                     strcpy(port, token);
                     aux++;
                 }
             }
+
+            // snprintf(local_succ, "SUCC %s %s")
 
             strcpy(local_succ, "SUCC ");
             strcat(local_succ, succsuccID);
@@ -702,6 +865,7 @@ int main(int argc, char *argv[]) // Recebe os argumentos do terminal, argc - con
     char *ring = malloc(4);
     char *id = malloc(3);
     char *command = malloc(2);
+    char *dest_id = malloc(3);
 
     char buffer[200];
 
@@ -731,7 +895,7 @@ int main(int argc, char *argv[]) // Recebe os argumentos do terminal, argc - con
         FD_SET(pred_fd, &rfds); /* adicionar o descritor 0 (stdin) ao conjunto */
         FD_SET(succ_fd, &rfds); /* adicionar o descritor fd (socket TCP) ao conjunto */
 
-        counter = select(fd + 1, &rfds, (fd_set *)NULL, (fd_set *)NULL, (struct timeval *)NULL);
+        counter = select(fd + 1, &rfds, (fd_set *)NULL, (fd_set *)NULL, NULL);
         if (counter == -1)
             exit(1);
 
@@ -749,22 +913,29 @@ int main(int argc, char *argv[]) // Recebe os argumentos do terminal, argc - con
             }
             else if (buffer[0] == 'l')
             {
+                fprintf(stderr, "ID -> %s\n", id);
                 leave(ring, id, Ring);
             }
             else if (buffer[0] == 's')
             {
+                char **tokens = __ft_split(buffer, ' ');
+                dest_id = tokens[1];
+
                 if (buffer[1] == 't')
                 {
                     Show_topology(id, succID, succIP, succTCP, succsuccID, succsuccIP, succsuccTCP, predID, Ring);
                 }
                 else if (buffer[1] == 'r')
                 {
+                    Create_Table_Route(Ring, dest_id, 1);
                 }
                 else if (buffer[1] == 'p')
                 {
+                    Create_Table_Path(Ring, dest_id);
                 }
                 else if (buffer[1] == 'f')
                 {
+                    Create_Table_Foward(Ring);
                 }
                 // else
                 // {
@@ -798,18 +969,20 @@ int main(int argc, char *argv[]) // Recebe os argumentos do terminal, argc - con
             addrlen = sizeof(addr);
             if ((newfd = accept(my_fd, (struct sockaddr *)&addr, &addrlen)) == -1)
                 exit(1);
-            Read_buffer_tcp(newfd);
+
+            fprintf(stderr, "NEW_FD -> %d\n", newfd);
+            Read_buffer_tcp(newfd, Ring);
         }
         if (FD_ISSET(pred_fd, &rfds) != 0)
         {
-            Read_buffer_tcp(pred_fd);
+            Read_buffer_tcp(pred_fd, Ring);
         }
         if (FD_ISSET(succ_fd, &rfds) != 0)
         {
-            Read_buffer_tcp(succ_fd);
+            Read_buffer_tcp(succ_fd, Ring);
         }
         // printf("new cycle");
     }
 
-    // return 0;
+    return 0;
 }

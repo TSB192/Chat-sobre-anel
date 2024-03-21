@@ -33,7 +33,10 @@ typedef struct Node
     char *succsucc_id;   
     char *succsucc_ip;   
     char *succsucc_port;
-    char *pred_id;   
+    char *pred_id; 
+    char *chord_id;  
+    char *chord_ip;  
+    char *chord_port;  
 
 }Node;
 
