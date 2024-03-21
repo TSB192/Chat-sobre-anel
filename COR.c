@@ -421,8 +421,6 @@ char *Create_Table_Route(Node **Ring, char *dest_id, int flag)
         }
     }
 
-    fprintf(stderr, "DESTINO: %s", dest_id);
-
     // Add the node id of the origin to the array
     strcat(encaminhamento_right, Ring[origin]->node_id);
     strcat(encaminhamento_left, Ring[origin]->node_id);
@@ -495,20 +493,45 @@ char *Create_Table_Route(Node **Ring, char *dest_id, int flag)
 }
 
 // Create shortest path table
-char *Create_Table_Path(Node **Ring, char *dest_id)
+char *Create_Table_Path(Node **Ring, char *dest_id, int flag)
 {
-    printf("%s", Create_Table_Route(Ring, dest_id, 0));
+    char *path = Create_Table_Route(Ring, dest_id, 0);
+
+    if (flag)
+    {
+        printf("%s", path);
+    }
+    else
+        printf("%c%c", path[3], path[4]);
 }
 
 // Create fowarding table
 char *Create_Table_Foward(Node **Ring)
 {
-    for (int i = 0; i < count; i++)
+    for (int i = 0; i < 16; i++)
     {
-        Create_Table_Path()
+        if (Ring[i])
+        {
+            printf("%s ", Ring[i]->node_id);
+            
+            // When the next position is NULL
+            if (!Ring[i+1])
+            {
+                printf("-\n");
+                break;
+            }
+            
+            Create_Table_Path(Ring, Ring[i]->node_id, 0);
+            printf("\n");
+        }
+
     }
-    
 }
+
+// void Full_Table_Route(Node **Ring, )
+// {
+
+// }
 
 int join(char *ring, char *id, char *ip, char *tcp, char *succID, char *succIP, char *succTCP, char *succsuccID, char *succsuccIP, char *succsuccTCP, char *predID, Node **Ring)
 {
@@ -931,7 +954,7 @@ int main(int argc, char *argv[]) // Recebe os argumentos do terminal, argc - con
                 }
                 else if (buffer[1] == 'p')
                 {
-                    Create_Table_Path(Ring, dest_id);
+                    Create_Table_Path(Ring, dest_id, 1);
                 }
                 else if (buffer[1] == 'f')
                 {
