@@ -36,26 +36,9 @@ typedef struct Node
     char *chord_port;  
 }Node;
 
-
-typedef struct Table
+typedef struct Route
 {
-    char *node_id; 
-    char *node_ip; 
-    char *node_port;
-    char *succ_id;
-    char *succ_ip;   
-    char *succ_port;   
-    char *succsucc_id;   
-    char *succsucc_ip;   
-    char *succsucc_port;
-    char *pred_id; 
-    char *chord_id;  
-    char *chord_ip;  
-    char *chord_port;  
-}Table;
-
-typedef struct Route{
-    char id[3];
+    char id_destino[3];
     char route_succ[100];
     char route_pred[100];
     struct Route* next;

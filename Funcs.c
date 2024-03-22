@@ -283,7 +283,7 @@ Route *findRoute(char *id)
     Route *current = Routes;
     while (current != NULL)
     {
-        if (strcmp(current->id, id) == 0)
+        if (strcmp(current->id_destino, id) == 0)
         {
             return current;
         }
@@ -348,7 +348,7 @@ void Read_buffer_tcp(int fd)
     {
         printf("%s\n", received[0]);
         if (!strcmp(tokens[0], "ENTRY"))
-        {
+        {   //Anel vazio
             if (fd == succ_fd)
             {
 
@@ -371,6 +371,7 @@ void Read_buffer_tcp(int fd)
                 sprintf(local_pred, "PRED %s\n", My_Node->node_id);
                 TCP_Client(My_Node->succ_ip, My_Node->succ_port, local_pred);
             }
+            // Anel com um ou mais nós
             else
             {
                 strcpy(My_Node->pred_id, tokens[1]);
@@ -534,7 +535,7 @@ void newRoute(char *id, char *rpred, char *rsucc)
 {
     Route *newRoute = malloc(sizeof(Route));
 
-    strcpy(newRoute->id, id);
+    strcpy(newRoute->id_destino, id);
     strcpy(newRoute->route_pred, rpred);
     strcpy(newRoute->route_succ, rsucc);
     newRoute->next = Routes;
@@ -562,12 +563,15 @@ void join()
     }
 
     TCP_Server(My_Node->node_port);
+
+    // Mensagem enviada quando o anel se encontra vazio
     sprintf(local_route, "ROUTE %s %s %s\n", My_Node->node_id, My_Node->node_id, My_Node->node_id);
     if (Succ_from_Nodeslist(buffer) != 0)
     {
         printf("%s", local_route);
         noSucc();
     }
+    // Mensagem do 
     sprintf(local_entry, "ENTRY %s %s %s\n", My_Node->node_id, My_Node->node_ip, My_Node->node_port);
     if (strcmp(My_Node->succ_id, My_Node->node_id) != 0)
     {
@@ -577,8 +581,10 @@ void join()
     sprintf(local_reg, "REG %s %s %s %s", my_ring, My_Node->node_id, My_Node->node_ip, My_Node->node_port);
     printf("%s\n", local_reg);
     UDP_Client(local_reg, nodes_buffer);
+
     if (strcmp(My_Node->succ_id, My_Node->node_id) != 0)
     {
+        // Write route mesg
         n = write(succ_fd, local_route, strlen(local_route));
         if (n == -1)
             exit(1);
@@ -618,6 +624,7 @@ void leave()
 
     return;
 }
+
 void Show_topology()
 {
     printf("my id: %s\n", My_Node->node_id);
