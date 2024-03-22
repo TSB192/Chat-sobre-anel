@@ -1,5 +1,66 @@
 #include "FUNCS.h"
 
+void Create_Node()
+{
+    // Allocate memory for the Node struct
+    My_Node = calloc(1, sizeof(Node));
+
+    My_Node->chord_id = calloc(1, 3);
+    My_Node->node_id = calloc(1, 3);
+    My_Node->succ_id = calloc(1, 3);
+    My_Node->succsucc_id = calloc(1, 3);
+    My_Node->pred_id = calloc(1, 3);
+
+    My_Node->chord_ip = calloc(1, 17);
+    My_Node->node_ip = calloc(1, 17);
+    My_Node->succ_ip = calloc(1, 17);
+    My_Node->succsucc_ip = calloc(1, 17);
+
+    My_Node->chord_port = calloc(1, 6);
+    My_Node->node_port = calloc(1, 6);
+    My_Node->succ_port = calloc(1, 6);
+    My_Node->succsucc_port = calloc(1, 6);
+
+}
+
+int __str_len(const char *str, int sep)
+{
+    int i;
+
+    i = 0;
+    while (str && str[i] && sep != str[i])
+        ++i;
+    return (i);
+}
+
+char **__ft_split(const char *str, int sep)
+{
+    char **strings;
+    static int size;
+    int i;
+    char *word;
+
+    i = 0;
+    word = NULL;
+    while (*str && sep == *str)
+        str++;
+    i = __str_len(str, sep);
+
+    if (i)
+        word = strndup(str, i);
+
+    if (word && ++size)
+        strings = __ft_split(str + i, sep);
+
+    else
+        strings = (char **)calloc((size + 1), sizeof(char *));
+    strings[size--] = word;
+
+    if (size < 0)
+        ++size;
+    return (strings);
+}
+
 void UDP_Client(char *msg, char *buffer)
 {
     int fd, errcode;
@@ -29,6 +90,7 @@ void UDP_Client(char *msg, char *buffer)
     if (n == -1)
         exit(1);
 
+    buffer[n] = 0;
     write(1, "echo: ", 6);
     write(1, buffer, n);
 
@@ -162,51 +224,40 @@ void Read_buffer_space_udp(char *buffer, char *id, char *ip, char *port)
     } while (token = strtok(NULL, " "));
     return;
 }
-
 void Read_buffer_tcp(int fd)
 {
-    char *token, line[50], local_succ[50], local_entry[50], local_pred[50], buffer[200], id[3], ip[20], port[20], origem[3], destino[3], new_path[50];
+    char *token, line[50], buffer[200], id[3], ip[20], port[20], origem[3], destino[3], new_path[50];
     int aux = 0, cost = 0, new_cost = 0, i, j, found = -1, position;
     ssize_t n;
+
+    char *local_succ = calloc(50, 1);
+    char *local_entry = calloc(50, 1);
+    char *local_pred = calloc(50, 1);
 
     n = read(fd, buffer, 200);
     if (n == -1)
         exit(1);
-
+    char **fckthis = __ft_split(buffer, '\n');
+    char **tokens = __ft_split(fckthis[0], ' ');
     if (n == 0)
     {
         if (fd == succ_fd)
         {
             close(succ_fd);
             succ_fd = -1;
-            memset(succ_id, 0, strlen(succ_id));
-            memset(succ_ip, 0, strlen(succ_ip));
-            memset(succ_port, 0, strlen(succ_port));
-            strcpy(succ_id, succsucc_id);
-            strcpy(succ_ip, succsucc_ip);
-            strcpy(succ_port, succsucc_port);
 
-            strcpy(local_succ, "SUCC ");
-            strcat(local_succ, succ_id);
-            strcat(local_succ, " ");
-            strcat(local_succ, succ_ip);
-            strcat(local_succ, " ");
-            strcat(local_succ, succ_port);
-            strcat(local_succ, "\n");
-            strcat(local_succ, "\0");
+            strcpy(My_Node->succ_id, My_Node->succsucc_id);
+            strcpy(My_Node->succ_ip, My_Node->succsucc_ip);
+            strcpy(My_Node->succ_port, My_Node->succsucc_port);
+
+            sprintf(local_succ, "SUCC %s %s %s\n", My_Node->succ_id, My_Node->succ_ip, My_Node->succ_port);
             n = write(pred_fd, local_succ, strlen(local_succ));
             if (n == -1)
                 exit(1);
 
-            strcpy(local_pred, "PRED ");
-            strcat(local_pred, my_id);
-            strcat(local_pred, "\n");
-            strcat(local_pred, "\0");
+            sprintf(local_pred, "PRED %s\n", My_Node->node_id);
 
-            fprintf(stderr, "MENSAGEM PRED ENVIADA (L:206): %s", local_pred);
-
-
-            TCP_Client(succ_ip, succ_port, local_pred);
+            TCP_Client(My_Node->succ_ip, My_Node->succ_port, local_pred);
         }
         else if (fd == pred_fd)
         {
@@ -217,248 +268,149 @@ void Read_buffer_tcp(int fd)
     }
     else
     {
-        write(1, "received: ", 10);
-        write(1, buffer, n);
-
-        token = strtok(buffer, "\n");
-        strcpy(line, token);
-
-        token = strtok(line, " ");
-        if (strcmp(token, "ENTRY") == 0)
+        printf("%s\n", fckthis[0]);
+        if (!strcmp(tokens[0], "ENTRY"))
         {
             if (fd == succ_fd)
             {
-                strcpy(succsucc_id, succ_id);
-                strcpy(succsucc_ip, succ_ip);
-                strcpy(succsucc_port, succ_port);
-                memset(succ_id, 0, strlen(succ_id));
-                memset(succ_ip, 0, strlen(succ_ip));
-                memset(succ_port, 0, strlen(succ_port));
+                
+                strcpy(My_Node->succsucc_id, My_Node->succ_id);
+                strcpy(My_Node->succsucc_ip, My_Node->succ_ip);
+                strcpy(My_Node->succsucc_port, My_Node->succ_port);
                 close(succ_fd);
                 succ_fd = -1;
-                aux = 0;
-                while (token = strtok(NULL, " "))
-                {
-                    if (aux == 0)
-                    {
-                        strcpy(id, token);
-                        strcpy(succ_id, token);
-                        aux++;
-                    }
-                    else if (aux == 1)
-                    {
-                        strcpy(ip, token);
-                        strcpy(succ_ip, token);
-                        aux++;
-                    }
-                    else if (aux == 2)
-                    {
-                        strcpy(port, token);
-                        strcpy(succ_port, token);
-                        aux++;
-                    }
-                }
-                strcpy(local_succ, "SUCC ");
-                strcat(local_succ, id);
-                strcat(local_succ, " ");
-                strcat(local_succ, ip);
-                strcat(local_succ, " ");
-                strcat(local_succ, port);
-                strcat(local_succ, "\n");
-                strcat(local_succ, "\0");
-                fprintf(stderr, "MENSAGEM SUCC ENVIADA (L:269): %s", local_succ);
+    
+                strcpy(My_Node->node_id, tokens[1]);
+                strcpy(My_Node->succ_id, tokens[1]);
+                strcpy(My_Node->node_ip, tokens[2]);
+                strcpy(My_Node->succ_ip, tokens[2]);
+                strncpy(My_Node->node_port, tokens[3], 5);
+                strncpy(My_Node->succ_port, tokens[3], 5);
+
+                sprintf(local_succ, "SUCC %s %s %s\n", tokens[1], tokens[2], tokens[3]);
+
                 n = write(pred_fd, local_succ, strlen(local_succ));
                 if (n == -1)
                     exit(1);
 
-                strcpy(local_pred, "PRED ");
-                strcat(local_pred, my_id);
-                strcat(local_pred, "\n");
-                strcat(local_pred, "\0");
+                sprintf(local_pred, "PRED %s\n", My_Node->node_id);
 
-                fprintf(stderr, "MENSAGEM PRED ENVIADA (L:279): %s", local_pred);
-
-                TCP_Client(succ_ip, succ_port, local_pred);
+                TCP_Client(My_Node->succ_ip, My_Node->succ_port, local_pred);
             }
             else
             {
-                memset(pred_id, 0, strlen(pred_id));
-                aux = 0;
-                while (token = strtok(NULL, " "))
-                {
-                    if (aux == 0)
-                    {
-                        strcpy(id, token);
-                        strcpy(pred_id, token);
-                        aux++;
-                    }
-                    else if (aux == 1)
-                    {
-                        strcpy(ip, token);
-                        aux++;
-                    }
-                    else if (aux == 2)
-                    {
-                        strcpy(port, token);
-                        aux++;
-                    }
-                }
+                strcpy(My_Node->node_id, tokens[1]);
+                strcpy(My_Node->pred_id, tokens[1]);
+                strcpy(My_Node->node_ip, tokens[2]);
+                strncpy(My_Node->node_port, tokens[3], 5);
 
                 if (pred_fd == -1)
                 {
-                    strcpy(succ_id, id);
-                    strcpy(succ_ip, ip);
-                    strcpy(succ_port, port);
 
-                    strcpy(local_succ, "SUCC ");
-                    strcat(local_succ, succ_id);
-                    strcat(local_succ, " ");
-                    strcat(local_succ, succ_ip);
-                    strcat(local_succ, " ");
-                    strcat(local_succ, succ_port);
-                    strcat(local_succ, "\n");
-                    strcat(local_succ, "\0");
+                    strcpy(My_Node->succ_id, tokens[1]);
+                    strcpy(My_Node->succ_ip, tokens[2]);
+                    strncpy(My_Node->succ_port, tokens[3], 5);
+                    sprintf(local_succ, "SUCC %s %s %s\n", tokens[1], tokens[2], tokens[3]);
+                    
+
                     n = write(fd, local_succ, strlen(local_succ));
                     if (n == -1)
                         exit(1);
 
-                    strcpy(local_pred, "PRED ");
-                    strcat(local_pred, my_id);
-                    strcat(local_pred, "\n");
-                    strcat(local_pred, "\0");
-
-                    fprintf(stderr, "MENSAGEM PRED ENVIADA (L:330): %s", local_pred);
-
-                    TCP_Client(ip, port, local_pred);
+                    sprintf(local_pred, "PRED %s\n", My_Node->node_id);
+                    TCP_Client(My_Node->succ_ip, My_Node->succ_port, local_pred);
                     pred_fd = fd;
                 }
                 else
                 {
-                    strcpy(local_succ, "SUCC ");
-                    strcat(local_succ, succ_id);
-                    strcat(local_succ, " ");
-                    strcat(local_succ, succ_ip);
-                    strcat(local_succ, " ");
-                    strcat(local_succ, succ_port);
-                    strcat(local_succ, "\n");
-                    strcat(local_succ, "\0");
+                    sprintf(local_succ, "SUCC %s %s %s\n", My_Node->succ_id, My_Node->succ_ip, My_Node->succ_port);
+
+
+
                     n = write(fd, local_succ, strlen(local_succ));
                     if (n == -1)
                         exit(1);
+                    sprintf(local_entry, "ENTRY %s %s %s\n", tokens[1], tokens[2], tokens[3]);
 
-                    strcpy(local_entry, "ENTRY ");
-                    strcat(local_entry, id);
-                    strcat(local_entry, " ");
-                    strcat(local_entry, ip);
-                    strcat(local_entry, " ");
-                    strcat(local_entry, port);
-                    strcat(local_entry, "\n");
-                    strcat(local_entry, "\0");
+
                     n = write(pred_fd, local_entry, strlen(local_entry));
                     if (n == -1)
                         exit(1);
                     close(pred_fd);
-                    pred_fd = -1;
                     pred_fd = fd;
                 }
             }
         }
-        else if (strcmp(token, "SUCC") == 0)
+
+        else if (!strcmp(tokens[0], "SUCC"))
         {
-            memset(succsucc_id, 0, strlen(succsucc_id));
-            memset(succsucc_ip, 0, strlen(succsucc_ip));
-            memset(succsucc_port, 0, strlen(succsucc_port));
-            aux = 0;
-            while (token = strtok(NULL, " "))
-            {
-                if (aux == 0)
-                {
-                    strcpy(succsucc_id, token);
-                    aux++;
-                }
-                else if (aux == 1)
-                {
-                    strcpy(succsucc_ip, token);
-                    aux++;
-                }
-                else if (aux == 2)
-                {
-                    strcpy(succsucc_port, token);
-                    aux++;
-                }
-            }
+            strcpy(My_Node->succsucc_id, tokens[1]);
+            strcpy(My_Node->succsucc_ip, tokens[2]);
+            strncpy(My_Node->succsucc_port, tokens[3], 5);
         }
-        else if (strcmp(token, "PRED") == 0)
+
+        else if (!strcmp(tokens[0], "PRED"))
         {
-            memset(pred_id, 0, strlen(pred_id));
             pred_fd = fd;
+            strncpy(My_Node->pred_id, tokens[1], 2);
 
-            token = strtok(NULL, "\n");
-            strcpy(pred_id, token);
-
-            if (broke_connection == 0)
+            if (!broke_connection)
             {
-                strcpy(local_succ, "SUCC ");
-                strcat(local_succ, succ_id);
-                strcat(local_succ, " ");
-                strcat(local_succ, succ_ip);
-                strcat(local_succ, " ");
-                strcat(local_succ, succ_port);
-                strcat(local_succ, "\n");
-                strcat(local_succ, "\0");
+                sprintf(local_succ, "SUCC %s %s %s\n", My_Node->succ_id, My_Node->succ_ip, My_Node->succ_port);
+
                 n = write(pred_fd, local_succ, strlen(local_succ));
                 if (n == -1)
                     exit(1);
 
                 broke_connection = -1;
             }
+        }
 
-            index_linha_max++;
-            strcpy(index_linha[index_linha_max], pred_id);
-        }
-        else if (strcmp(token, "ROUTE") == 0)
-        {
-            token = strtok(NULL, " ");
-            strcpy(origem, token);
-            token = strtok(NULL, " ");
-            strcpy(destino, token);
-            for (i = 0; i < index_coluna_max; i++)
-            {
-                if (strcpy(index_coluna[i], destino) == 0)
-                {
-                    cost = index_cost[i];
-                    found = 0;
-                    position = i;
-                }
-            }
-            if (found != 0)
-            {
-                index_coluna_max++;
-                strcpy(index_coluna[index_coluna_max], destino);
-                cost = 100;
-                position = index_coluna_max;
-            }
-            // leio o caminho recebido
-            while (token = strtok(NULL, "-"))
-            {
-                strcpy(new_path, token);
-                strcat(new_path, "-");
-                new_cost++;
-            }
-            strcat(new_path, "\n");
-            // calculo o custo do caminho passando por mim
-            new_cost++;
-            // comparo com o custo atual
-            if (new_cost < cost)
-            {
-                index_cost[position] = new_cost;
+        // else if (strcmp(token, "ROUTE") == 0)
+        // {
+        //     token = strtok(NULL, " ");
+        //     strcpy(origem, token);
+        //     token = strtok(NULL, " ");
+        //     strcpy(destino, token);
+        //     for (i = 0; i < index_coluna_max; i++)
+        //     {
+        //         if (strcpy(index_coluna[i], destino) == 0)
+        //         {
+        //             cost = index_cost[i];
+        //             found = 0;
+        //             position = i;
+        //         }
+        //     }
+        //     if (found != 0)
+        //     {
+        //         index_coluna_max++;
+        //         strcpy(index_coluna[index_coluna_max], destino);
+        //         cost = 100;
+        //         position = index_coluna_max;
+        //     }
+        //     // leio o caminho recebido
+        //     while (token = strtok(NULL, "-"))
+        //     {
+        //         strcpy(new_path, token);
+        //         strcat(new_path, "-");
+        //         new_cost++;
+        //     }
+        //     strcat(new_path, "\n");
+        //     // calculo o custo do caminho passando por mim
+        //     new_cost++;
+        //     // comparo com o custo atual
+        //     if (new_cost < cost)
+        //     {
+        //         index_cost[position] = new_cost;
                 
-            }
-        }
+        //     }
+        // }
     }
 
     return;
 }
+
+
 
 void Read_buffer_LF(char *buffer, char *id, char *ip, char *port)
 {
@@ -476,150 +428,107 @@ void Read_buffer_LF(char *buffer, char *id, char *ip, char *port)
 
 int Read_buffer_Nodeslist(char *buffer)
 {
-    char *line_token, *id_token, id[3], ip[20], port[20], line[50];
-    int aux = 0, l = 0, c = 0;
-    char id_list[11] = "0123456789";
+    char **lines = __ft_split(buffer, '\n');
+    int new_id;
+    char *id;
 
-    line_token = strtok(buffer, "\n");
-    do
+    srand(time(NULL));
+    for (int i = 0; lines[i]; i++)
     {
-        if (aux == 0)
+
+        if (!strncmp(My_Node->node_id, lines[i], 2))
         {
-            aux++;
-        }
-        else
-        {
-            strcpy(line, line_token);
-            id_token = strtok(line, " ");
-            if (strcmp(my_id, id_token) == 0)
+            while(1)
             {
-                my_id[1] = id_list[l];
-                l++;
-                if (l == 9)
+                new_id = (rand() % 99) + 1;
+
+                sprintf(id, "%02d", new_id);
+                for (int j = 0; lines[j]; j++)
                 {
-                    l = 0;
-                    c++;
+                    if (!strncmp(id, lines[j], 2))
+                        break;
+                    if(!lines[j + 1])
+                        strcpy(My_Node->node_id, id);
                 }
-                my_id[0] = id_list[c];
-                return 1;
+                if (!strncmp(id, My_Node->node_id, 2))
+                    break;
             }
+            return 1;
         }
-    } while (line_token = strtok(NULL, "\n"));
+    }
     return 0;
 }
 
 int Succ_from_Nodeslist(char *buffer)
 {
-    char *line_token, *id_token, line[50];
-    int aux_out = 0, aux_read = 0;
+    char **line_token;
 
-    line_token = strtok(buffer, "\n");
-    if ((line_token = strtok(NULL, "\n")) != NULL)
+    line_token = __ft_split (buffer, '\n');
+    if (line_token[1])
     {
-        strcpy(line, line_token);
-        id_token = strtok(line, " ");
-        strcpy(succ_id, id_token);
-        while (id_token = strtok(NULL, " "))
-        {
-            if (aux_read == 0)
-            {
-                strcpy(succ_ip, id_token);
-                aux_read++;
-            }
-            else if (aux_read == 1)
-            {
-                strcpy(succ_port, id_token);
-                aux_read++;
-                return 0;
-            }
-        }
+        char **tokens = __ft_split(line_token[1], ' ');
+        My_Node->succ_id = tokens[0];
+        My_Node->succ_ip = tokens[1];
+        My_Node->succ_port = tokens[2]; 
         return 0;
     }
-
     return 1;
+}
+
+void noSucc(){
+    strcpy(My_Node->succ_id, My_Node->node_id);
+    strcpy(My_Node->succ_ip, My_Node->node_ip);
+    strcpy(My_Node->succ_port, My_Node->node_port);
+
+    strcpy(My_Node->succsucc_id, My_Node->node_id);
+    strcpy(My_Node->succsucc_ip, My_Node->node_ip);
+    strcpy(My_Node->succsucc_port, My_Node->node_port);
+
+    strcpy(My_Node->pred_id, My_Node->node_id);
 }
 
 void join()
 {
-    char buffer[200], local_reg[50], local_entry[50], local_nodes[10], local_route[55], nodes_buffer[200], aux_buffer[200];
+    char buffer[200], local_reg[50], local_entry[50], local_nodes[10], local_route[55], nodes_buffer[200];
     int aux = 0;
     ssize_t n;
 
-    strcpy(local_reg, "REG ");
-    strcpy(local_entry, "ENTRY ");
     strcpy(local_nodes, "NODES ");
 
     strcat(local_nodes, my_ring);
+
     UDP_Client(local_nodes, buffer);
-
-    strcpy(aux_buffer, buffer);
-
-    while (Read_buffer_Nodeslist(aux_buffer) != 0)
-    {
+    while (Read_buffer_Nodeslist(buffer) != 0)
+    {   
         aux++;
     }
-
     if (aux != 0)
     {
         printf("Your id has been changed to %s", my_id);
     }
 
-    TCP_Server(my_port);
+    TCP_Server(My_Node->node_port);
     index_coluna_max++;
-    strcpy(index_coluna[index_coluna_max], my_id);
-    strcpy(caminhos[index_coluna_max], my_id);
-
-    strcpy(aux_buffer, buffer);
-    if (Succ_from_Nodeslist(aux_buffer) != 0)
+    // strcpy(index_coluna[index_coluna_max], my_id);
+    // strcpy(caminhos[index_coluna_max], my_id);
+    if (Succ_from_Nodeslist(buffer) != 0)
     {
-        strcpy(succ_id, my_id);
-        strcpy(succ_ip, my_ip);
-        strcpy(succ_port, my_port);
-        strcpy(pred_id, my_id);
-        strcpy(succsucc_id, my_id);
-        strcpy(succsucc_ip, my_ip);
-        strcpy(succsucc_port, my_port);
+        noSucc();
     }
-
-    strcat(local_entry, my_id);
-    strcat(local_entry, " ");
-    strcat(local_entry, my_ip);
-    strcat(local_entry, " ");
-    strcat(local_entry, my_port);
-    strcat(local_entry, "\n");
-    strcat(local_entry, "\0");
-    if (strcmp(succ_id, my_id) != 0)
+    sprintf(local_entry, "ENTRY %s %s %s\n", My_Node->node_id, My_Node->node_ip, My_Node->node_port);
+    if (strcmp(My_Node->succ_id, My_Node->node_id) != 0)
     {
 
-        fprintf(stderr, "MENSAGEM ENTRY ENVIADA (L:594): %s", local_entry);
+        TCP_Client(My_Node->succ_ip, My_Node->succ_port, local_entry);
 
-
-        TCP_Client(succ_ip, succ_port, local_entry);
-
-        strcpy(local_route, "ROUTE ");
-        strcat(local_route, my_id);
-        strcat(local_route, " ");
-        strcat(local_route, my_id);
-        strcat(local_route, " ");
-        strcat(local_route, my_id);
-        strcat(local_route, "\n");
-        strcat(local_route, "\0");
-        n = write(succ_fd, local_route, strlen(local_route));
-        if (n == -1)
-            exit(1);
-        /*index_coluna_max++;
-        strcpy(index_coluna[index_coluna_max],succ_id);
-        index_linha_max++;
-        strcpy(index_linha[index_linha_max],succ_id);*/
+        
+        // sprintf(local_route, "ROUTE %s %s %s\n", My_Node->node_id,My_Node->node_id,My_Node->node_id);
+        // n = write(succ_fd, local_route, strlen(local_route));
+        // if (n == -1)
+        //     exit(1);
     }
-    strcat(local_reg, my_ring);
-    strcat(local_reg, " ");
-    strcat(local_reg, my_id);
-    strcat(local_reg, " ");
-    strcat(local_reg, my_ip);
-    strcat(local_reg, " ");
-    strcat(local_reg, my_port);
-    strcat(local_reg, "\0");
+    sprintf(local_reg, "REG %s %s %s %s", my_ring, My_Node->node_id, My_Node->node_ip, My_Node->node_port);
+    printf("%s\n", local_reg);
     UDP_Client(local_reg, nodes_buffer);
 
     return;
