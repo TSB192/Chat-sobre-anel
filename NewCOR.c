@@ -5,14 +5,14 @@ char my_ring[4], my_id[3], my_ip[16], my_port[6], succ_id[3], succ_ip[16], succ_
 int succ_fd = -1, pred_fd = -1, my_fd = -1, broke_connection = -1, index_coluna_max = -1, index_linha_max = -1, index_cost[16];
 
 Node *My_Node;
-char ***Routes;
+Route *Routes = NULL;
+void printRoutes();
 
 int main(int argc, char *argv[])
 {
     // My_node is where we will save the Node information -- allocated 1 slots of memory
     
     Create_Node();
-    Routes = calloc(16, sizeof(char **));
     char *token, buffer[200], ring[4], id[3], command[3];
     int fd, counter, i, j;
     fd_set rfds;
@@ -88,6 +88,7 @@ int main(int argc, char *argv[])
                 }
                 else if (buffer[1] == 'r')
                 {
+                    // printRoutes();
                 }
                 else if (buffer[1] == 'p')
                 {

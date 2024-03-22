@@ -53,11 +53,20 @@ typedef struct Table
     char *chord_ip;  
     char *chord_port;  
 }Table;
+
+typedef struct Route{
+    char id[3];
+    char route_succ[100];
+    char route_pred[100];
+    struct Route* next;
+} Route;
+
+
 //variáveis globais
 extern char my_ring[4],my_id[3],my_ip[16],my_port[6],succ_id[3],succ_ip[16],succ_port[6], succsucc_id[3],succsucc_ip[16],succsucc_port[6],pred_id[3],index_linha[16][3],index_coluna[16][3],encaminhamento[16][16][50],caminhos[16][50],expedicao[16][2];
 extern int succ_fd,pred_fd,my_fd,broke_connection,index_coluna_max,index_linha_max,index_cost[16];
 extern Node *My_Node;
-
+extern Route *Routes;
 
 int Biggest_fd();
 //funções de criação de client UDP
