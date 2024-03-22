@@ -195,35 +195,11 @@ void TCP_Server(char *port)
     return;
 }
 
-void Read_buffer_space_udp(char *buffer, char *id, char *ip, char *port)
-{
-    char *token;
-    int aux = 0;
+void makeRoute(char **routeLeft, char ** routeRight){
 
-    token = strtok(buffer, " ");
-    do
-    {
-        if (aux == 0)
-            aux++;
-        else if (aux == 1)
-        {
-            strcpy(id, token);
-            aux++;
-        }
-        else if (aux == 2)
-        {
-            strcpy(ip, token);
-            aux++;
-        }
-        else if (aux == 3)
-        {
-            strcpy(port, token);
-            aux++;
-        }
-
-    } while (token = strtok(NULL, " "));
-    return;
 }
+
+
 void Read_buffer_tcp(int fd)
 {
     char *token, line[50], buffer[200], id[3], ip[20], port[20], origem[3], destino[3], new_path[50];
@@ -237,8 +213,9 @@ void Read_buffer_tcp(int fd)
     n = read(fd, buffer, 200);
     if (n == -1)
         exit(1);
-    char **fckthis = __ft_split(buffer, '\n');
-    char **tokens = __ft_split(fckthis[0], ' ');
+
+    char **received = __ft_split(buffer, '\n');
+    char **tokens = __ft_split(received[0], ' ');
     if (n == 0)
     {
         if (fd == succ_fd)
@@ -268,7 +245,7 @@ void Read_buffer_tcp(int fd)
     }
     else
     {
-        printf("%s\n", fckthis[0]);
+        printf("%s\n", received[0]);
         if (!strcmp(tokens[0], "ENTRY"))
         {
             if (fd == succ_fd)
@@ -280,14 +257,11 @@ void Read_buffer_tcp(int fd)
                 close(succ_fd);
                 succ_fd = -1;
     
-                strcpy(My_Node->node_id, tokens[1]);
                 strcpy(My_Node->succ_id, tokens[1]);
-                strcpy(My_Node->node_ip, tokens[2]);
                 strcpy(My_Node->succ_ip, tokens[2]);
-                strncpy(My_Node->node_port, tokens[3], 5);
                 strncpy(My_Node->succ_port, tokens[3], 5);
 
-                sprintf(local_succ, "SUCC %s %s %s\n", tokens[1], tokens[2], tokens[3]);
+                sprintf(local_succ, "SUCC %s %s %s\n", tokens[1], tokens[2], My_Node->succ_port);
 
                 n = write(pred_fd, local_succ, strlen(local_succ));
                 if (n == -1)
@@ -299,7 +273,6 @@ void Read_buffer_tcp(int fd)
             }
             else
             {
-                strcpy(My_Node->node_id, tokens[1]);
                 strcpy(My_Node->pred_id, tokens[1]);
                 strcpy(My_Node->node_ip, tokens[2]);
                 strncpy(My_Node->node_port, tokens[3], 5);
@@ -310,7 +283,7 @@ void Read_buffer_tcp(int fd)
                     strcpy(My_Node->succ_id, tokens[1]);
                     strcpy(My_Node->succ_ip, tokens[2]);
                     strncpy(My_Node->succ_port, tokens[3], 5);
-                    sprintf(local_succ, "SUCC %s %s %s\n", tokens[1], tokens[2], tokens[3]);
+                    sprintf(local_succ, "SUCC %s %s %s\n", tokens[1], tokens[2], My_Node->succ_port);
                     
 
                     n = write(fd, local_succ, strlen(local_succ));
@@ -365,7 +338,11 @@ void Read_buffer_tcp(int fd)
                 broke_connection = -1;
             }
         }
-
+        if (!strncmp(received[1], "ROUTE", 5))
+        {
+            printf("%s\n", received[1]);
+            ;
+        }
         // else if (strcmp(token, "ROUTE") == 0)
         // {
         //     token = strtok(NULL, " ");
@@ -407,22 +384,6 @@ void Read_buffer_tcp(int fd)
         // }
     }
 
-    return;
-}
-
-
-
-void Read_buffer_LF(char *buffer, char *id, char *ip, char *port)
-{
-    char *token, line[50];
-    int aux = 0;
-
-    token = strtok(buffer, "\n");
-    do
-    {
-        strcpy(line, token);
-        Read_buffer_space_udp(line, id, ip, port);
-    } while (token = strtok(NULL, "\n"));
     return;
 }
 
@@ -508,7 +469,7 @@ void join()
     }
 
     TCP_Server(My_Node->node_port);
-    index_coluna_max++;
+    // index_coluna_max++;
     // strcpy(index_coluna[index_coluna_max], my_id);
     // strcpy(caminhos[index_coluna_max], my_id);
     if (Succ_from_Nodeslist(buffer) != 0)
@@ -522,10 +483,10 @@ void join()
         TCP_Client(My_Node->succ_ip, My_Node->succ_port, local_entry);
 
         
-        // sprintf(local_route, "ROUTE %s %s %s\n", My_Node->node_id,My_Node->node_id,My_Node->node_id);
-        // n = write(succ_fd, local_route, strlen(local_route));
-        // if (n == -1)
-        //     exit(1);
+        sprintf(local_route, "ROUTE %s %s %s\n", My_Node->node_id,My_Node->node_id,My_Node->node_id);
+        n = write(succ_fd, local_route, strlen(local_route));
+        if (n == -1)
+            exit(1);
     }
     sprintf(local_reg, "REG %s %s %s %s", my_ring, My_Node->node_id, My_Node->node_ip, My_Node->node_port);
     printf("%s\n", local_reg);
@@ -567,10 +528,10 @@ void leave()
 }
 void Show_topology()
 {
-    printf("my id: %s\n", my_id);
-    printf("succ info: %s %s %s\n", succ_id, succ_ip, succ_port);
-    printf("succsucc info: %s %s %s\n", succsucc_id, succsucc_ip, succsucc_port);
-    printf("pred id: %s\n", pred_id);
+    printf("my id: %s\n", My_Node->node_id);
+    printf("succ info: %s %s %s\n", My_Node->succ_id, My_Node->succ_ip, My_Node->succ_port);
+    printf("succsucc info: %s %s %s\n", My_Node->succsucc_id, My_Node->succsucc_ip, My_Node->succsucc_port);
+    printf("pred id: %s\n", My_Node->pred_id);
     return;
 }
 

@@ -66,8 +66,6 @@ void UDP_Client(char *msg, char *buffer);
 void TCP_Client(char *ip, char *port, char *msg);
 void TCP_Server(char *port);
 //funções de leitura de buffer
-void Read_buffer_space_udp(char *buffer, char *id, char *ip, char *port);
-void Read_buffer_LF(char *buffer, char *id, char *ip, char *port);
 int Read_buffer_Nodeslist(char *buffer);
 int Succ_from_Nodeslist(char *buffer);
 void Read_buffer_tcp(int fd);
