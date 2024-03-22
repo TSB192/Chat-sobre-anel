@@ -4,6 +4,10 @@
 char my_ring[4], my_id[3], my_ip[16], my_port[6], succ_id[3], succ_ip[16], succ_port[6], succsucc_id[3], succsucc_ip[16], succsucc_port[6], pred_id[3], index_linha[16][3], index_coluna[16][3], encaminhamento[16][16][50], caminhos[16][50], expedicao[16][2];
 int succ_fd = -1, pred_fd = -1, my_fd = -1, broke_connection = -1, index_coluna_max = -1, index_linha_max = -1, index_cost[16];
 
+//Variáveis cordas
+char my_chord_id[3], chords_ids[13][3];
+int my_chord_fd = -1, last_chord_fd = -1, chords_fds[13];
+
 Node *My_Node;
 Route *Routes = NULL;
 void printRoutes();
@@ -14,6 +18,7 @@ int main(int argc, char *argv[])
     
     Create_Node();
     char *token, buffer[200], ring[4], id[3], command[3];
+    char **chat;
     int fd, counter, i, j;
     fd_set rfds;
     int newfd;
@@ -119,8 +124,23 @@ int main(int argc, char *argv[])
             {
                 return 0;
             }
-            else if (buffer[0] == 'm')
-            {
+            else if(buffer[0] == 'm'){
+                chat = __ft_split(buffer,' ');         
+
+                sprintf(token, "CHAT %s %s %s\n", My_Node->node_id, chat [1], chat[2]);         
+
+                int n=write(succ_fd,token,strlen(token));
+                if(n==-1)
+                exit(1);
+                
+            }
+            else if(buffer[0] == 'c'){
+                if(Chord() == 1){
+                    printf("Cannot make chord, not sufficient nodes");
+                }
+            }
+            else if(buffer[0] == 'r'){
+                Remove_chord();
             }
         }
         if (FD_ISSET(my_fd, &rfds) != 0)

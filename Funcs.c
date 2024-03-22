@@ -20,7 +20,6 @@ void Create_Node()
     My_Node->node_port = calloc(1, 6);
     My_Node->succ_port = calloc(1, 6);
     My_Node->succsucc_port = calloc(1, 6);
-
 }
 
 int __str_len(const char *str, int sep)
@@ -145,6 +144,104 @@ void TCP_Client(char *ip, char *port, char *msg)
     return;
 }
 
+void Manutencao_array_chords(int pos)
+{
+    int i;
+
+    for (i = pos; i < last_chord_fd; i++)
+    {
+        chords_fds[i] = chords_fds[i + 1];
+        strcpy(chords_ids[i], chords_ids[i + 1]);
+    }
+    chords_fds[last_chord_fd] = -1;
+    memset(chords_ids[last_chord_fd], '\0', sizeof(chords_ids[last_chord_fd]));
+    last_chord_fd = (last_chord_fd - 1);
+    return;
+}
+
+int Recieve_chord(char *id, int fd)
+{
+
+    if (last_chord_fd == 12)
+    {
+        printf("Too many chords");
+        return 1;
+    }
+
+    last_chord_fd++;
+    chords_fds[last_chord_fd] = fd;
+    strcpy(chords_ids[last_chord_fd], id);
+
+    return 0;
+}
+
+void Remove_chord()
+{
+    close(my_chord_fd);
+    my_chord_fd = -1;
+    memset(my_chord_id, '\0', sizeof(my_chord_id));
+    return;
+}
+
+int Chord()
+{
+    char *line_token, buffer[200], id[3], ip[20], port[20], local_nodes[10], local_chord[20];
+    int aux = 0;
+    int fd, errcode;
+    ssize_t n;
+    struct addrinfo hints, *res;
+
+    strcpy(local_nodes, "NODES ");
+    strcat(local_nodes, my_ring);
+    UDP_Client(local_nodes, buffer);
+
+    line_token = strtok(buffer, "\n");
+    do
+    {
+        if (aux == 0)
+        {
+            aux++;
+        }
+        else
+        {
+            sscanf(line_token, "%s %s %s", id, ip, port);
+
+            if (strcmp(id, my_chord_id) && strcmp(My_Node->succ_id, id) && strcmp(My_Node->pred_id, id) && strcmp(My_Node->node_id, id))
+            {
+
+                sprintf(local_chord, "CHORD %s\n", My_Node->node_id);
+
+                fd = socket(AF_INET, SOCK_STREAM, 0);
+                if (fd == -1)
+                    exit(1);
+
+                my_chord_fd = fd;
+                strcpy(my_chord_id, id);
+
+                memset(&hints, 0, sizeof hints);
+                hints.ai_family = AF_INET;
+                hints.ai_socktype = SOCK_STREAM;
+
+                errcode = getaddrinfo(ip, port, &hints, &res);
+                if (errcode != 0)
+                    exit(1);
+
+                n = connect(fd, res->ai_addr, res->ai_addrlen);
+                if (n == -1)
+                    exit(1);
+
+                n = write(fd, local_chord, strlen(local_chord));
+                if (n == -1)
+                    exit(1);
+
+                freeaddrinfo(res);
+                return 0;
+            }
+        }
+    } while ((line_token = strtok(NULL, "\n")));
+    return 1;
+}
+
 void TCP_Server(char *port)
 {
     int fd, errcode, newfd;
@@ -181,10 +278,13 @@ void TCP_Server(char *port)
     return;
 }
 
-Route* findRoute(char* id) {
-    Route* current = Routes;
-    while (current != NULL) {
-        if (strcmp(current->id, id) == 0) {
+Route *findRoute(char *id)
+{
+    Route *current = Routes;
+    while (current != NULL)
+    {
+        if (strcmp(current->id, id) == 0)
+        {
             return current;
         }
         current = current->next;
@@ -192,9 +292,11 @@ Route* findRoute(char* id) {
     return NULL; // route not found
 }
 
-void updateRoute(char* id, char* rpred, char* rsucc) {
-    Route* route = findRoute(id);
-    if (route != NULL) {
+void updateRoute(char *id, char *rpred, char *rsucc)
+{
+    Route *route = findRoute(id);
+    if (route != NULL)
+    {
         strcpy(route->route_pred, rpred);
         strcpy(route->route_succ, rsucc);
     }
@@ -249,13 +351,13 @@ void Read_buffer_tcp(int fd)
         {
             if (fd == succ_fd)
             {
-                
+
                 strcpy(My_Node->succsucc_id, My_Node->succ_id);
                 strcpy(My_Node->succsucc_ip, My_Node->succ_ip);
                 strcpy(My_Node->succsucc_port, My_Node->succ_port);
                 close(succ_fd);
                 succ_fd = -1;
-    
+
                 strcpy(My_Node->succ_id, tokens[1]);
                 strcpy(My_Node->succ_ip, tokens[2]);
                 strncpy(My_Node->succ_port, tokens[3], 5);
@@ -291,7 +393,7 @@ void Read_buffer_tcp(int fd)
                     pred_fd = fd;
                     n = write(pred_fd, line, strlen(line));
                     if (n == -1)
-                    exit(1);
+                        exit(1);
                     pred_fd = fd;
                 }
                 else
@@ -319,10 +421,11 @@ void Read_buffer_tcp(int fd)
         {
             pred_fd = fd;
             strncpy(My_Node->pred_id, tokens[1], 2);
-            
+
             sprintf(line, "ROUTE %s %s %s\n", My_Node->node_id, My_Node->node_id, My_Node->node_id);
             n = write(pred_fd, line, strlen(line));
-            if (n == -1) {
+            if (n == -1)
+            {
                 exit(1);
             }
             if (!broke_connection)
@@ -338,6 +441,28 @@ void Read_buffer_tcp(int fd)
         else if (!strncmp(tokens[0], "ROUTE", 5))
         {
             ;
+        }
+        else if (!strcmp(tokens[0], "CHAT"))
+        {
+            char *from = tokens[1];
+            char *to = tokens[2];
+            char *message = tokens[3];
+            if (strcmp(from, my_id) == 0)
+            {
+                printf("Destination does not exist");
+                return;
+            }
+            if (strcmp(my_id, to) == 0)
+            {
+                printf("Message from %s: %s", from, message);
+            }
+            else
+            {
+                sprintf(line, "CHAT %s %s %s\n", from, to, message);
+                n = write(succ_fd, line, strlen(line));
+                if (n == -1)
+                    exit(1);
+            }
         }
     }
     return;
@@ -355,7 +480,7 @@ int Read_buffer_Nodeslist(char *buffer)
 
         if (!strncmp(My_Node->node_id, lines[i], 2))
         {
-            while(1)
+            while (1)
             {
                 new_id = (rand() % 99) + 1;
 
@@ -364,7 +489,7 @@ int Read_buffer_Nodeslist(char *buffer)
                 {
                     if (!strncmp(id, lines[j], 2))
                         break;
-                    if(!lines[j + 1])
+                    if (!lines[j + 1])
                         strcpy(My_Node->node_id, id);
                 }
                 if (!strncmp(id, My_Node->node_id, 2))
@@ -380,19 +505,20 @@ int Succ_from_Nodeslist(char *buffer)
 {
     char **line_token;
 
-    line_token = __ft_split (buffer, '\n');
+    line_token = __ft_split(buffer, '\n');
     if (line_token[1])
     {
         char **tokens = __ft_split(line_token[1], ' ');
         My_Node->succ_id = tokens[0];
         My_Node->succ_ip = tokens[1];
-        My_Node->succ_port = tokens[2]; 
+        My_Node->succ_port = tokens[2];
         return 0;
     }
     return 1;
 }
 
-void noSucc(){
+void noSucc()
+{
     strcpy(My_Node->succ_id, My_Node->node_id);
     strcpy(My_Node->succ_ip, My_Node->node_ip);
     strcpy(My_Node->succ_port, My_Node->node_port);
@@ -404,7 +530,8 @@ void noSucc(){
     strcpy(My_Node->pred_id, My_Node->node_id);
 }
 
-void newRoute(char *id, char *rpred, char *rsucc){
+void newRoute(char *id, char *rpred, char *rsucc)
+{
     Route *newRoute = malloc(sizeof(Route));
 
     strcpy(newRoute->id, id);
@@ -426,7 +553,7 @@ void join()
 
     UDP_Client(local_nodes, buffer);
     while (Read_buffer_Nodeslist(buffer) != 0)
-    {   
+    {
         aux++;
     }
     if (aux != 0)
@@ -435,10 +562,10 @@ void join()
     }
 
     TCP_Server(My_Node->node_port);
-    sprintf(local_route, "ROUTE %s %s %s\n", My_Node->node_id,My_Node->node_id,My_Node->node_id);
+    sprintf(local_route, "ROUTE %s %s %s\n", My_Node->node_id, My_Node->node_id, My_Node->node_id);
     if (Succ_from_Nodeslist(buffer) != 0)
     {
-        printf("--%s", local_route);
+        printf("%s", local_route);
         noSucc();
     }
     sprintf(local_entry, "ENTRY %s %s %s\n", My_Node->node_id, My_Node->node_ip, My_Node->node_port);
@@ -497,6 +624,10 @@ void Show_topology()
     printf("succ info: %s %s %s\n", My_Node->succ_id, My_Node->succ_ip, My_Node->succ_port);
     printf("succsucc info: %s %s %s\n", My_Node->succsucc_id, My_Node->succsucc_ip, My_Node->succsucc_port);
     printf("pred id: %s\n", My_Node->pred_id);
+    if (my_chord_fd != -1)
+        printf("chord id: %s\n", my_chord_id);
+    for (int i = 0; i <= last_chord_fd ; i++)
+        printf("chord %d id: %s\n", i + 1, chords_ids[i]);
     return;
 }
 
